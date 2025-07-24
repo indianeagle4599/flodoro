@@ -1,25 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pomodoro Timer</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div id="app" tabindex="0">
     <header class="app-header">
       <h1 class="app-title">Pomodoro Timer</h1>
       <!-- Header buttons: settings, tasks and history -->
-      <div class="header-buttons">
+      <!-- translucent pill so icons never blend into the background -->
+      <div class="header-tray">
         <button id="tasks-button" class="icon-button" aria-label="Tasks" title="Tasks">📋</button>
         <button id="history-button" class="icon-button" aria-label="History" title="History">📊</button>
         <button id="stats-button" class="icon-button" aria-label="Statistics" title="Statistics">📈</button>
-        <button id="audio-settings-button" class="icon-button" aria-label="Audio Settings" title="Audio Settings">🎵</button>
+        <button id="audio-settings-button" class="icon-button" aria-label="Audio Settings"
+          title="Audio Settings">🎵</button>
         <button id="settings-button" class="icon-button" aria-label="Settings" title="Settings">⚙️</button>
       </div>
     </header>
     <main class="main-content">
+      <!-- Persistent theme quote display (appears when user sets a theme quote) -->
+      <div id="theme-quote-display" class="theme-quote hidden">
+        <span id="theme-quote-text"></span>
+        <button id="remove-theme-quote" class="icon-button remove-theme-quote" aria-label="Remove theme quote" title="Remove theme quote">✖</button>
+      </div>
       <!-- Mode toggle: click to switch between work and break sessions -->
       <div id="mode-toggle" class="mode-toggle" role="button" tabindex="0" aria-label="Toggle work/break">
         <span id="mode-main" class="mode-main">Work</span>
@@ -50,7 +59,8 @@
       <div id="quote-display" class="quote-display hidden"></div>
     </main>
     <!-- Settings panel: slides out from the top right under the settings button. Hides when not active. -->
-    <div id="settings-panel" class="settings-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div id="settings-panel" class="settings-panel slideout hidden" role="dialog" aria-modal="true"
+      aria-labelledby="settings-title">
       <h2 id="settings-title" class="settings-title">Settings</h2>
       <div class="settings-content">
         <!-- Duration settings -->
@@ -70,18 +80,17 @@
           <label for="sessions-before-long">Pomodoros before long break</label>
           <input type="number" id="sessions-before-long" min="1" value="4" />
         </div>
-        <!-- Background colours for dynamic gradient -->
+        <!-- Background gradient colours displayed side‑by‑side -->
         <div class="settings-group">
-          <label for="bg-color1">Background colour 1</label>
-          <input type="color" id="bg-color1" value="#3358a2" />
+          <label>Background gradient</label>
+          <div class="color-input-row">
+            <input type="color" id="bg-color1" value="#3358a2" />
+            <input type="color" id="bg-color2" value="#8f5bbb" />
+          </div>
         </div>
+        <!-- Accent colour picker for fine tuning the accent hue -->
         <div class="settings-group">
-          <label for="bg-color2">Background colour 2</label>
-          <input type="color" id="bg-color2" value="#8f5bbb" />
-        </div>
-        <!-- Theme color selection -->
-        <div class="settings-group">
-          <label for="color-picker">Theme color</label>
+          <label for="color-picker">Accent colour</label>
           <input type="color" id="color-picker" value="#3b82f6" />
         </div>
         <!-- Theme preset selection -->
@@ -108,7 +117,8 @@
       </div>
     </div>
     <!-- Tasks panel: lists and manages tasks independently of settings -->
-    <div id="tasks-panel" class="tasks-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="tasks-title">
+    <div id="tasks-panel" class="tasks-panel slideout hidden" role="dialog" aria-modal="true"
+      aria-labelledby="tasks-title">
       <h2 id="tasks-title" class="panel-title">Tasks</h2>
       <div class="tasks-content">
         <div class="task-input-row">
@@ -122,7 +132,8 @@
       </div>
     </div>
     <!-- History panel: displays completed work/break sessions -->
-    <div id="history-panel" class="history-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="history-title">
+    <div id="history-panel" class="history-panel slideout hidden" role="dialog" aria-modal="true"
+      aria-labelledby="history-title">
       <h2 id="history-title" class="panel-title">History</h2>
       <div class="history-content">
         <ul id="history-list" class="history-list"></ul>
@@ -133,7 +144,8 @@
       </div>
     </div>
     <!-- Audio settings panel: selects track, volume and progress -->
-    <div id="audio-panel" class="audio-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="audio-title">
+    <div id="audio-panel" class="audio-panel slideout hidden" role="dialog" aria-modal="true"
+      aria-labelledby="audio-title">
       <h2 id="audio-title" class="panel-title">Audio Settings</h2>
       <div class="audio-content">
         <!-- Genre selection -->
@@ -157,11 +169,11 @@
             <!-- Track options will be populated dynamically -->
           </select>
         </div>
-        <!-- Playback controls -->
+        <!-- Playback controls – circular pill buttons -->
         <div class="audio-playback-row">
-          <button id="prev-track" class="icon-button" aria-label="Previous track">⏮</button>
-          <button id="audio-play-pause" class="icon-button" aria-label="Play/pause">⏯</button>
-          <button id="next-track" class="icon-button" aria-label="Next track">⏭</button>
+          <button id="prev-track" class="pill-btn" aria-label="Previous">⏮</button>
+          <button id="audio-play-pause" class="pill-btn main" aria-label="Play / pause">▶️</button>
+          <button id="next-track" class="pill-btn" aria-label="Next">⏭</button>
         </div>
         <!-- Volume and mute -->
         <div class="volume-row">
@@ -179,7 +191,8 @@
       </div>
     </div>
     <!-- Statistics panel: shows counts of sessions and tasks -->
-    <div id="stats-panel" class="stats-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+    <div id="stats-panel" class="stats-panel slideout hidden" role="dialog" aria-modal="true"
+      aria-labelledby="stats-title">
       <h2 id="stats-title" class="panel-title">Statistics</h2>
       <div class="stats-content">
         <div id="stats-summary" class="stats-summary"></div>
@@ -192,4 +205,5 @@
   <audio id="audio-player" preload="auto"></audio>
   <script src="app.js"></script>
 </body>
+
 </html>

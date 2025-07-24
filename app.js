@@ -129,6 +129,10 @@
   const closeStatsEl = document.getElementById('close-stats');
   const statsSummaryEl = document.getElementById('stats-summary');
   const quoteDisplayEl = document.getElementById('quote-display');
+  // Elements for persistent theme quote display
+  const themeQuoteDisplayEl = document.getElementById('theme-quote-display');
+  const themeQuoteTextEl = document.getElementById('theme-quote-text');
+  const removeThemeQuoteEl = document.getElementById('remove-theme-quote');
 
   // Motivational quotes for breaks
   const quotes = [
@@ -138,6 +142,11 @@
     "Rest is part of the process.",
     "Great things are done by a series of small things brought together."
   ];
+
+  // Index of currently displayed quote
+  let currentQuoteIndex = 0;
+  // Theme quote saved by user (null if not set)
+  let themeQuote = null;
 
   // Task management state
   // Tasks are stored as objects { text: string, done: boolean }
@@ -165,8 +174,10 @@
    */
   function showRandomQuote() {
     if (!quoteDisplayEl) return;
-    const index = Math.floor(Math.random() * quotes.length);
-    quoteDisplayEl.textContent = quotes[index];
+    // Pick a random quote and set the current index
+    currentQuoteIndex = Math.floor(Math.random() * quotes.length);
+    const quote = quotes[currentQuoteIndex];
+    updateQuoteDisplay(quote);
     quoteDisplayEl.classList.remove('hidden');
   }
 
@@ -176,6 +187,89 @@
   function hideQuote() {
     if (!quoteDisplayEl) return;
     quoteDisplayEl.classList.add('hidden');
+  }
+
+  /**
+   * Update the quote display element with the given quote. This function
+   * inserts the quote text into the display along with a small button
+   * that allows the user to set the quote as their daily theme. It
+   * attaches an event listener to the button and ensures clicking the
+   * button does not trigger cycling to the next quote.
+   *
+   * @param {string} quote The motivational quote to display.
+   */
+  function updateQuoteDisplay(quote) {
+    if (!quoteDisplayEl) return;
+    // Build HTML with quote text and set‑theme button
+    // Use a black star (★) instead of an emoji so CSS colour can be applied
+    quoteDisplayEl.innerHTML = `<span class="quote-text">${quote}</span>` +
+      `<button class="set-theme-btn" title="Set as daily theme">★</button>`;
+    // Attach click handler to set theme button
+    const setBtn = quoteDisplayEl.querySelector('.set-theme-btn');
+    if (setBtn) {
+      setBtn.addEventListener('click', (e) => {
+        // Prevent bubbling so clicking star doesn't cycle the quote
+        e.stopPropagation();
+        setThemeQuote(quote);
+      });
+    }
+  }
+
+  /**
+   * Cycle to the next quote in the list. Called when the user clicks
+   * anywhere on the quote display (excluding the set‑theme button). It
+   * updates the index and re‑renders the quote display.
+   */
+  function cycleQuote() {
+    currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+    const nextQuote = quotes[currentQuoteIndex];
+    updateQuoteDisplay(nextQuote);
+  }
+
+  /**
+   * Set the given quote as the persistent daily theme. This stores the
+   * theme in localStorage and updates the theme quote display below the
+   * header. Calling this function automatically shows the theme quote.
+   *
+   * @param {string} quote The quote to set as the theme of the day.
+   */
+  function setThemeQuote(quote) {
+    themeQuote = quote;
+    try {
+      localStorage.setItem('pomodoroThemeQuote', quote);
+    } catch (e) {
+      console.warn('Failed to save theme quote:', e);
+    }
+    updateThemeQuoteDisplay();
+  }
+
+  /**
+   * Remove the currently set theme quote. Clears localStorage and hides
+   * the theme quote display area.
+   */
+  function removeThemeQuote() {
+    themeQuote = null;
+    try {
+      localStorage.removeItem('pomodoroThemeQuote');
+    } catch (e) {
+      console.warn('Failed to remove theme quote:', e);
+    }
+    updateThemeQuoteDisplay();
+  }
+
+  /**
+   * Update the persistent theme quote display. If a theme quote is set,
+   * display it in the dedicated area with a remove button; otherwise hide
+   * the entire element.
+   */
+  function updateThemeQuoteDisplay() {
+    if (!themeQuoteDisplayEl || !themeQuoteTextEl) return;
+    if (themeQuote) {
+      themeQuoteTextEl.textContent = themeQuote;
+      themeQuoteDisplayEl.classList.remove('hidden');
+    } else {
+      themeQuoteDisplayEl.classList.add('hidden');
+    }
   }
 
   // Map audio track identifiers to actual URLs (local or remote)
@@ -503,6 +597,11 @@
       // Inputs: dark backgrounds with light text
       root.style.setProperty('--input-bg', '#374151');
       root.style.setProperty('--input-color', '#ffffff');
+      // Dark quote backgrounds should be translucent black
+      root.style.setProperty('--quote-bg', 'rgba(0, 0, 0, 0.4)');
+
+      // Provide a darker tray background for header icons in dark mode
+      root.style.setProperty('--header-tray-bg', 'rgba(0, 0, 0, 0.4)');
     } else {
       // Light mode: invert colours for a brighter interface reminiscent of macOS
       root.style.setProperty('--color-primary', '#1f2937');
@@ -513,6 +612,11 @@
       // Inputs: light backgrounds with dark text
       root.style.setProperty('--input-bg', '#e5e7eb');
       root.style.setProperty('--input-color', '#1f2937');
+      // Light quote backgrounds should be translucent white
+      root.style.setProperty('--quote-bg', 'rgba(255, 255, 255, 0.6)');
+
+      // Provide a light tray background for header icons in light mode
+      root.style.setProperty('--header-tray-bg', 'rgba(255, 255, 255, 0.5)');
     }
     // Update background gradient to match new theme brightness
     applyBackgroundGradient();
@@ -652,7 +756,7 @@
   function togglePlayPause() {
     if (!audioPlayerEl || !audioPlayPauseEl) return;
     if (audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => {});
+      audioPlayerEl.play().catch(() => { });
       audioPlayPauseEl.textContent = '⏸';
     } else {
       audioPlayerEl.pause();
@@ -679,7 +783,7 @@
     applyAudioTrack(newTrack.id);
     // Immediately play new track if previously playing
     if (!audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => {});
+      audioPlayerEl.play().catch(() => { });
     }
     // Save preference
     const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
@@ -704,7 +808,7 @@
     audioSelectEl.value = newTrack.id;
     applyAudioTrack(newTrack.id);
     if (!audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => {});
+      audioPlayerEl.play().catch(() => { });
     }
     const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     prefs.audioTrack = newTrack.id;
@@ -724,7 +828,7 @@
   // Update the on‑screen task label
   function updateCurrentTaskDisplay() {
     if (currentTaskEl) {
-    if (tasks.length > 0 && currentTaskIndex < tasks.length) {
+      if (tasks.length > 0 && currentTaskIndex < tasks.length) {
         const current = tasks[currentTaskIndex];
         // Skip completed tasks
         if (current.done) {
@@ -1242,7 +1346,7 @@
   function toggleAudio() {
     if (!audioPlayerEl || !audioPlayerEl.src) return;
     if (audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => {});
+      audioPlayerEl.play().catch(() => { });
       if (audioToggleEl) audioToggleEl.textContent = '🔈';
     } else {
       audioPlayerEl.pause();
@@ -1331,7 +1435,7 @@
   // Request notification permission on load
   function requestNotificationPermission() {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
+      Notification.requestPermission().catch(() => { });
     }
   }
 
@@ -1458,6 +1562,16 @@
       prefs.themePreset = 'custom';
       localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
     });
+
+    // Clicking on the quote cycles to the next quote; the set‑theme button stops propagation
+    if (quoteDisplayEl) quoteDisplayEl.addEventListener('click', () => {
+      cycleQuote();
+    });
+    // Remove persistent theme quote when the remove button is clicked
+    if (removeThemeQuoteEl) removeThemeQuoteEl.addEventListener('click', (e) => {
+      e.preventDefault();
+      removeThemeQuote();
+    });
     // Dark mode toggle
     if (darkModeToggleEl) darkModeToggleEl.addEventListener('change', () => {
       const enabled = darkModeToggleEl.checked;
@@ -1530,6 +1644,15 @@
   // Initialise application
   function init() {
     loadPreferences();
+    // Load the user's theme quote from localStorage and update its display
+    try {
+      const storedThemeQuote = localStorage.getItem('pomodoroThemeQuote');
+      themeQuote = storedThemeQuote || null;
+    } catch (e) {
+      console.warn('Could not read theme quote from storage:', e);
+      themeQuote = null;
+    }
+    updateThemeQuoteDisplay();
     requestNotificationPermission();
     attachEventListeners();
     updateDisplay();
