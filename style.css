@@ -21,6 +21,8 @@
   --font-size-timer: 6rem;
   --font-size-label: 1.5rem;
   --border-radius: 12px;
+  --input-bg: #374151;
+  --input-color: #ffffff;
 }
 
 html, body {
@@ -159,6 +161,33 @@ html, body {
   letter-spacing: 2px;
 }
 
+/* Timer wrapper that positions plus/minus above and below the timer */
+.timer-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Buttons used for adjusting time */
+.time-adjust-btn {
+  font-size: 1.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-primary);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.time-adjust-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* Controls */
 .controls {
   display: flex;
@@ -266,6 +295,15 @@ html, body {
 .volume-row input[type="range"]:active::-webkit-slider-thumb {
   transform: scale(1.5);
   background: var(--color-accent-light);
+}
+
+/* Playback controls row in audio panel */
+.audio-playback-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 /* Stats summary styling */
@@ -478,8 +516,19 @@ html, body {
   padding: 0.5rem;
   border-radius: var(--border-radius);
   border: none;
-  background: #374151;
-  color: var(--color-primary);
+  background: var(--input-bg);
+  color: var(--input-color);
+  font-size: 1rem;
+}
+
+/* Apply input background variables to number, color and text inputs within settings groups */
+.settings-group input[type="number"],
+.settings-group input[type="color"] {
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  border: none;
+  background: var(--input-bg);
+  color: var(--input-color);
   font-size: 1rem;
 }
 .settings-group input[type="range"] {

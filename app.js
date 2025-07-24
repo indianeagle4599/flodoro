@@ -21,11 +21,22 @@
     shortBreakDuration: 5 * 60,
     longBreakDuration: 15 * 60,
     sessionsBeforeLong: 4,
-    wallpaper: 'gradient_cool.png',
+    // Background colours for dynamic gradient
+    bgColor1: '#3358a2',
+    bgColor2: '#8f5bbb',
+    // Audio preferences
+    audioGenre: 'focus',
     audioTrack: 'none',
     volume: 0.5,
+    // Theme preferences
     darkMode: false,
     themePreset: 'custom'
+    ,
+    // Dynamic gradient base colours
+    bgColor1: '#3358a2',
+    bgColor2: '#8f5bbb',
+    // Audio genre preset
+    audioGenre: 'focus'
   };
 
   // State variables
@@ -40,15 +51,13 @@
   let isRunning = false;
   let postponeUsed = false;
 
-  // List of available wallpapers for shuffle (will be updated if more assets added)
-  const wallpapers = [
-    'gradient_cool.png',
-    'gradient_warm.png',
-    'abstract_green.png',
-    'gradient_forest.png',
-    'gradient_sunset.png',
-    'gradient_pastel.png'
-  ];
+  // Background gradient colours (hex strings)
+  let bgColor1 = DEFAULTS.bgColor1;
+  let bgColor2 = DEFAULTS.bgColor2;
+
+  // Audio genre (category)
+  let audioGenre = DEFAULTS.audioGenre;
+
 
   // DOM elements
   const appEl = document.getElementById('app');
@@ -65,11 +74,20 @@
   const shortBreakInputEl = document.getElementById('short-break-duration');
   const longBreakInputEl = document.getElementById('long-break-duration');
   const sessionsBeforeLongEl = document.getElementById('sessions-before-long');
-  const wallpaperSelectEl = document.getElementById('wallpaper-select');
   const audioSelectEl = document.getElementById('audio-select');
   const volumeSliderEl = document.getElementById('volume-slider');
   const audioPlayerEl = document.getElementById('audio-player');
   const darkModeToggleEl = document.getElementById('dark-mode-toggle');
+
+  // New background colour pickers for dynamic gradient
+  const bgColor1El = document.getElementById('bg-color1');
+  const bgColor2El = document.getElementById('bg-color2');
+
+  // New audio controls for genres and playback
+  const audioGenreSelectEl = document.getElementById('audio-genre-select');
+  const audioPlayPauseEl = document.getElementById('audio-play-pause');
+  const prevTrackEl = document.getElementById('prev-track');
+  const nextTrackEl = document.getElementById('next-track');
 
   // Additional DOM elements for enhanced controls and settings
   const secondaryControlsEl = document.getElementById('secondary-controls');
@@ -167,6 +185,37 @@
   };
 
   /**
+   * Audio library mapping genres to available tracks. Each entry is an
+   * array of objects with an `id` (used in audioSources) and a human
+   * friendly `name`. Additional audio files can be added to the
+   * corresponding folders under assets/audio and referenced here.
+   */
+  const audioLibrary = {
+    focus: [
+      { id: 'track1', name: 'Focus Track 1' },
+      { id: 'track2', name: 'Focus Track 2' }
+    ],
+    minecraft: [
+      { id: 'track1', name: 'Minecraft Ambience' }
+    ],
+    jazz: [
+      { id: 'track2', name: 'Jazz Club' }
+    ],
+    country: [
+      { id: 'track1', name: 'Country Club' }
+    ],
+    library: [
+      { id: 'track2', name: 'Library' }
+    ],
+    cafe: [
+      { id: 'track1', name: 'Café' }
+    ],
+    deep: [
+      { id: 'track2', name: 'Deep Work' }
+    ]
+  };
+
+  /**
    * Compute and display statistics summarising completed sessions and task events.
    * Counts the number of work, short break and long break sessions as well as
    * the number of tasks added, completed and deleted. Updates the stats panel.
@@ -211,12 +260,15 @@
     shortBreakDuration = parseInt(stored.shortBreakDuration || DEFAULTS.shortBreakDuration, 10);
     longBreakDuration = parseInt(stored.longBreakDuration || DEFAULTS.longBreakDuration, 10);
     sessionsBeforeLong = parseInt(stored.sessionsBeforeLong || DEFAULTS.sessionsBeforeLong, 10);
-    const wallpaper = stored.wallpaper || DEFAULTS.wallpaper;
     const audioTrack = stored.audioTrack || DEFAULTS.audioTrack;
     const volume = typeof stored.volume === 'number' ? stored.volume : DEFAULTS.volume;
     const baseColor = stored.baseColor || '#3b82f6';
     const themePreset = stored.themePreset || DEFAULTS.themePreset;
     const darkMode = typeof stored.darkMode === 'boolean' ? stored.darkMode : DEFAULTS.darkMode;
+    // Load gradient colours and audio genre
+    bgColor1 = stored.bgColor1 || DEFAULTS.bgColor1;
+    bgColor2 = stored.bgColor2 || DEFAULTS.bgColor2;
+    audioGenre = stored.audioGenre || DEFAULTS.audioGenre;
     // Tasks are loaded separately via loadTasks()
     currentTaskIndex = 0;
 
@@ -225,14 +277,15 @@
     if (shortBreakInputEl) shortBreakInputEl.value = Math.round(shortBreakDuration / 60);
     if (longBreakInputEl) longBreakInputEl.value = Math.round(longBreakDuration / 60);
     if (sessionsBeforeLongEl) sessionsBeforeLongEl.value = sessionsBeforeLong;
-    if (wallpaperSelectEl) wallpaperSelectEl.value = wallpaper;
     if (audioSelectEl) audioSelectEl.value = audioTrack;
     if (volumeSliderEl) volumeSliderEl.value = volume;
     if (colorPickerEl) colorPickerEl.value = baseColor;
     if (darkModeToggleEl) darkModeToggleEl.checked = darkMode;
     if (themePresetSelectEl) themePresetSelectEl.value = themePreset;
+    if (bgColor1El) bgColor1El.value = bgColor1;
+    if (bgColor2El) bgColor2El.value = bgColor2;
+    if (audioGenreSelectEl) audioGenreSelectEl.value = audioGenre;
 
-    applyWallpaper(wallpaper);
     applyAudioTrack(audioTrack);
     audioPlayerEl.volume = volume;
 
@@ -240,6 +293,10 @@
     applyThemePreset(themePreset);
     applyThemeColor(colorPickerEl.value);
     applyDarkMode(darkMode);
+    // Apply background gradient based on stored colours
+    applyBackgroundGradient();
+    // Populate audio select options for stored genre
+    updateAudioSelectOptions();
 
     remainingTime = workDuration;
     updateDisplay();
@@ -264,32 +321,40 @@
     shortBreakDuration = Math.max(1, parseInt(shortBreakInputEl.value, 10)) * 60;
     longBreakDuration = Math.max(1, parseInt(longBreakInputEl.value, 10)) * 60;
     sessionsBeforeLong = Math.max(1, parseInt(sessionsBeforeLongEl.value, 10));
-    const wallpaper = wallpaperSelectEl.value;
     const audioTrack = audioSelectEl.value;
     const volume = parseFloat(volumeSliderEl.value);
     const baseColor = colorPickerEl.value;
     const themePreset = themePresetSelectEl ? themePresetSelectEl.value : 'custom';
     const darkMode = darkModeToggleEl && darkModeToggleEl.checked;
+    // Read background colours and audio genre selections
+    const bg1 = bgColor1El ? bgColor1El.value : DEFAULTS.bgColor1;
+    const bg2 = bgColor2El ? bgColor2El.value : DEFAULTS.bgColor2;
+    bgColor1 = bg1;
+    bgColor2 = bg2;
+    const genreSel = audioGenreSelectEl ? audioGenreSelectEl.value : DEFAULTS.audioGenre;
+    audioGenre = genreSel;
     // Tasks are managed separately; do not modify tasks here
     const prefs = {
       workDuration,
       shortBreakDuration,
       longBreakDuration,
       sessionsBeforeLong,
-      wallpaper,
       audioTrack,
       volume,
       baseColor,
       darkMode,
-      themePreset
+      themePreset,
+      bgColor1: bg1,
+      bgColor2: bg2,
+      audioGenre: genreSel
     };
     localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
 
-    applyWallpaper(wallpaper);
     applyAudioTrack(audioTrack);
     audioPlayerEl.volume = volume;
     applyThemeColor(baseColor);
     applyDarkMode(darkMode);
+    applyBackgroundGradient();
 
     // Do not reset the timer; just apply new settings for future sessions
     updateAudioProgressVisibility();
@@ -297,16 +362,6 @@
     closeSettings();
   }
 
-  // Apply the chosen wallpaper by updating the #app background image
-  function applyWallpaper(filename) {
-    if (filename === 'shuffle') {
-      // Pick a random wallpaper from the available list
-      const random = wallpapers[Math.floor(Math.random() * wallpapers.length)];
-      appEl.style.backgroundImage = `url('assets/images/${random}')`;
-    } else {
-      appEl.style.backgroundImage = `url('assets/images/${filename}')`;
-    }
-  }
 
   // Apply the chosen audio track
   function applyAudioTrack(track) {
@@ -445,6 +500,9 @@
       root.style.setProperty('--color-bg-overlay', 'rgba(0,0,0,0.35)');
       // Dark panels: use a translucent dark background for frosted glass effect
       root.style.setProperty('--panel-bg', 'rgba(17, 24, 39, 0.75)');
+      // Inputs: dark backgrounds with light text
+      root.style.setProperty('--input-bg', '#374151');
+      root.style.setProperty('--input-color', '#ffffff');
     } else {
       // Light mode: invert colours for a brighter interface reminiscent of macOS
       root.style.setProperty('--color-primary', '#1f2937');
@@ -452,7 +510,205 @@
       root.style.setProperty('--color-bg-overlay', 'rgba(255,255,255,0.4)');
       // Light panels: use translucent light background
       root.style.setProperty('--panel-bg', 'rgba(255, 255, 255, 0.6)');
+      // Inputs: light backgrounds with dark text
+      root.style.setProperty('--input-bg', '#e5e7eb');
+      root.style.setProperty('--input-color', '#1f2937');
     }
+    // Update background gradient to match new theme brightness
+    applyBackgroundGradient();
+  }
+
+  /**
+   * Lighten or darken a hex colour by a given factor. A factor > 1 will
+   * lighten the colour, while a factor < 1 will darken it. Converts
+   * the colour to HSL, multiplies the lightness by the factor and
+   * clamps it between 0 and 1. Returns a hex string. This helper is
+   * used to generate background gradients that remain legible in both
+   * dark and light modes.
+   *
+   * @param {string} hex The input colour in #rrggbb format.
+   * @param {number} factor The multiplier for the lightness channel.
+   */
+  function adjustColour(hex, factor) {
+    // Remove leading '#'
+    const clean = hex.replace('#', '');
+    const r = parseInt(clean.substring(0, 2), 16) / 255;
+    const g = parseInt(clean.substring(2, 4), 16) / 255;
+    const b = parseInt(clean.substring(4, 6), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l;
+    l = (max + min) / 2;
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        default:
+          h = (r - g) / d + 4;
+      }
+      h /= 6;
+    }
+    // Adjust lightness
+    l = Math.min(1, Math.max(0, l * factor));
+    // Convert back to RGB
+    const hueToRgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    let r2, g2, b2;
+    if (s === 0) {
+      r2 = g2 = b2 = l;
+    } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r2 = hueToRgb(p, q, h + 1 / 3);
+      g2 = hueToRgb(p, q, h);
+      b2 = hueToRgb(p, q, h - 1 / 3);
+    }
+    const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
+  }
+
+  /**
+   * Apply a linear gradient to the app background using the current
+   * selected colours. Depending on dark or light mode, the colours
+   * are darkened or lightened to ensure sufficient contrast with
+   * foreground elements. This function should be called whenever
+   * bgColor1, bgColor2 or darkMode changes.
+   */
+  function applyBackgroundGradient() {
+    // Determine factor based on dark mode: dark mode darkens colours
+    const darkMode = darkModeToggleEl && darkModeToggleEl.checked;
+    // Dark mode: darken colours slightly; Light mode: use original colours
+    const factor = darkMode ? 0.6 : 1.0;
+    const c1 = adjustColour(bgColor1, factor);
+    const c2 = adjustColour(bgColor2, factor);
+    if (appEl) {
+      appEl.style.backgroundImage = `linear-gradient(135deg, ${c1}, ${c2})`;
+    }
+  }
+
+  /**
+   * Populate the track select element with options corresponding to the
+   * selected audio genre. When the genre changes, any previously
+   * selected track is reset to the first track of the new genre.
+   * Tracks are drawn from the audioLibrary. Always includes a
+   * 'None' option.
+   */
+  function updateAudioSelectOptions() {
+    if (!audioSelectEl || !audioGenreSelectEl) return;
+    const genre = audioGenreSelectEl.value;
+    audioGenre = genre;
+    // Remove existing options
+    while (audioSelectEl.firstChild) {
+      audioSelectEl.removeChild(audioSelectEl.firstChild);
+    }
+    // Add 'None' option
+    const noneOpt = document.createElement('option');
+    noneOpt.value = 'none';
+    noneOpt.textContent = 'None';
+    audioSelectEl.appendChild(noneOpt);
+    // Add tracks for this genre
+    const list = audioLibrary[genre] || [];
+    list.forEach((track, idx) => {
+      const opt = document.createElement('option');
+      opt.value = track.id;
+      opt.textContent = track.name;
+      audioSelectEl.appendChild(opt);
+    });
+    // Select the first track by default if the previous track isn't available
+    if (list.length > 0) {
+      audioSelectEl.value = list[0].id;
+      applyAudioTrack(list[0].id);
+    } else {
+      audioSelectEl.value = 'none';
+      applyAudioTrack('none');
+    }
+    // Save genre and track preferences immediately
+    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+    prefs.audioGenre = genre;
+    prefs.audioTrack = audioSelectEl.value;
+    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+  }
+
+  /**
+   * Toggle play/pause for the audio player and update the play/pause
+   * button icon accordingly. This is separate from the quick audio
+   * toggle, which mutes/unmutes globally. When paused, the audio
+   * remains loaded so that play resumes from the same position.
+   */
+  function togglePlayPause() {
+    if (!audioPlayerEl || !audioPlayPauseEl) return;
+    if (audioPlayerEl.paused) {
+      audioPlayerEl.play().catch(() => {});
+      audioPlayPauseEl.textContent = '⏸';
+    } else {
+      audioPlayerEl.pause();
+      audioPlayPauseEl.textContent = '▶️';
+    }
+  }
+
+  /**
+   * Advance to the previous track within the current genre. If at the
+   * beginning, wraps around to the last track. Updates the audio
+   * source and saves the preference.
+   */
+  function previousTrack() {
+    if (!audioGenreSelectEl || !audioSelectEl) return;
+    const genre = audioGenreSelectEl.value;
+    const list = audioLibrary[genre] || [];
+    if (list.length === 0) return;
+    // Find current index
+    const idx = list.findIndex((t) => t.id === audioSelectEl.value);
+    let newIndex = idx - 1;
+    if (newIndex < 0) newIndex = list.length - 1;
+    const newTrack = list[newIndex];
+    audioSelectEl.value = newTrack.id;
+    applyAudioTrack(newTrack.id);
+    // Immediately play new track if previously playing
+    if (!audioPlayerEl.paused) {
+      audioPlayerEl.play().catch(() => {});
+    }
+    // Save preference
+    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+    prefs.audioTrack = newTrack.id;
+    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+  }
+
+  /**
+   * Advance to the next track within the current genre. If at the
+   * end, wraps around to the first track. Updates the audio source
+   * and saves the preference.
+   */
+  function nextTrack() {
+    if (!audioGenreSelectEl || !audioSelectEl) return;
+    const genre = audioGenreSelectEl.value;
+    const list = audioLibrary[genre] || [];
+    if (list.length === 0) return;
+    const idx = list.findIndex((t) => t.id === audioSelectEl.value);
+    let newIndex = idx + 1;
+    if (newIndex >= list.length) newIndex = 0;
+    const newTrack = list[newIndex];
+    audioSelectEl.value = newTrack.id;
+    applyAudioTrack(newTrack.id);
+    if (!audioPlayerEl.paused) {
+      audioPlayerEl.play().catch(() => {});
+    }
+    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+    prefs.audioTrack = newTrack.id;
+    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
   }
 
   // Show or hide the audio progress bar depending on whether a track is loaded
@@ -604,10 +860,6 @@
       // Hide quote when returning to work
       hideQuote();
     }
-    // If wallpaper is set to shuffle, pick a new random wallpaper for each session
-    if (wallpaperSelectEl && wallpaperSelectEl.value === 'shuffle') {
-      applyWallpaper('shuffle');
-    }
     // Reset for next session; new startTime will be set in startTimer()
     sessionStartTime = null;
     sessionTotalTime = null;
@@ -689,10 +941,6 @@
     updateDisplay();
     // Hide quote when manually switching to work
     hideQuote();
-    // Shuffle wallpaper if enabled
-    if (wallpaperSelectEl && wallpaperSelectEl.value === 'shuffle') {
-      applyWallpaper('shuffle');
-    }
   }
   // Skip directly to the next break session (short or long depending on cycle)
   function skipToBreak() {
@@ -713,10 +961,6 @@
     updateDisplay();
     // Show a random quote when manually switching to break
     showRandomQuote();
-    // Shuffle wallpaper if enabled
-    if (wallpaperSelectEl && wallpaperSelectEl.value === 'shuffle') {
-      applyWallpaper('shuffle');
-    }
   }
 
   // Toggle session mode between work and break via mode toggle UI or keyboard
@@ -813,7 +1057,9 @@
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
       delBtn.className = 'delete-button';
-      delBtn.addEventListener('click', () => {
+      delBtn.addEventListener('click', (ev) => {
+        // Prevent click from bubbling to document (which may close the panel)
+        ev.stopPropagation();
         const removed = tasks.splice(index, 1)[0];
         // Adjust currentTaskIndex if necessary
         if (index < currentTaskIndex) {
@@ -1111,6 +1357,25 @@
     if (audioToggleEl) audioToggleEl.addEventListener('click', toggleAudio);
     if (muteToggleEl) muteToggleEl.addEventListener('click', toggleMute);
     if (audioProgressEl) audioProgressEl.addEventListener('input', seekAudio);
+
+    // Audio genre change updates track options
+    if (audioGenreSelectEl) audioGenreSelectEl.addEventListener('change', () => {
+      updateAudioSelectOptions();
+    });
+    // Track selection change applies audio track
+    if (audioSelectEl) audioSelectEl.addEventListener('change', () => {
+      const track = audioSelectEl.value;
+      applyAudioTrack(track);
+      // Save track and genre immediately
+      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+      prefs.audioTrack = track;
+      prefs.audioGenre = audioGenreSelectEl ? audioGenreSelectEl.value : prefs.audioGenre;
+      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    });
+    // Audio playback controls
+    if (prevTrackEl) prevTrackEl.addEventListener('click', previousTrack);
+    if (nextTrackEl) nextTrackEl.addEventListener('click', nextTrack);
+    if (audioPlayPauseEl) audioPlayPauseEl.addEventListener('click', togglePlayPause);
     // Close settings when clicking outside panel
     document.addEventListener('click', (e) => {
       if (!settingsPanelEl.classList.contains('hidden')) {
@@ -1213,6 +1478,23 @@
       if (preset !== 'custom') {
         prefs.baseColor = colorPickerEl.value;
       }
+      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    });
+
+    // Background colour pickers for dynamic gradient
+    if (bgColor1El) bgColor1El.addEventListener('input', () => {
+      bgColor1 = bgColor1El.value;
+      applyBackgroundGradient();
+      // Save preferences immediately
+      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+      prefs.bgColor1 = bgColor1;
+      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    });
+    if (bgColor2El) bgColor2El.addEventListener('input', () => {
+      bgColor2 = bgColor2El.value;
+      applyBackgroundGradient();
+      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+      prefs.bgColor2 = bgColor2;
       localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
     });
     // keyboard support

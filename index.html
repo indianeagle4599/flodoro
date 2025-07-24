@@ -25,19 +25,21 @@
         <span id="mode-main" class="mode-main">Work</span>
         <span id="mode-sub" class="mode-sub">Break</span>
       </div>
-      <!-- Session label and timer -->
+      <!-- Session label and timer wrapped with plus/minus controls -->
       <div id="session-label" class="session-label">Work</div>
-      <div id="timer-display" class="timer-display">25:00</div>
+      <div id="timer-wrapper" class="timer-wrapper">
+        <button id="add-minute" class="icon-button time-adjust-btn" aria-label="Add one minute">+</button>
+        <div id="timer-display" class="timer-display">25:00</div>
+        <button id="subtract-minute" class="icon-button time-adjust-btn" aria-label="Remove one minute">−</button>
+      </div>
       <div id="controls" class="controls">
         <button id="start-button" class="control-button">Start</button>
         <button id="reset-button" class="control-button">Reset</button>
         <button id="postpone-button" class="control-button hidden">Postpone Break</button>
       </div>
 
-      <!-- Secondary controls: adjust time, skip sessions, audio control -->
+      <!-- Secondary controls: audio quick toggle -->
       <div id="secondary-controls" class="secondary-controls">
-        <button id="add-minute" class="icon-button" aria-label="Add one minute">+1&nbsp;min</button>
-        <button id="subtract-minute" class="icon-button" aria-label="Remove one minute">−1&nbsp;min</button>
         <button id="audio-toggle" class="icon-button" aria-label="Toggle audio">🔈</button>
       </div>
 
@@ -68,18 +70,14 @@
           <label for="sessions-before-long">Pomodoros before long break</label>
           <input type="number" id="sessions-before-long" min="1" value="4" />
         </div>
-        <!-- Wallpaper and audio selection -->
+        <!-- Background colours for dynamic gradient -->
         <div class="settings-group">
-          <label for="wallpaper-select">Background</label>
-          <select id="wallpaper-select">
-            <option value="gradient_cool.png">Cool Gradient</option>
-            <option value="gradient_warm.png">Warm Gradient</option>
-            <option value="abstract_green.png">Abstract Green</option>
-            <option value="gradient_forest.png">Forest Gradient</option>
-            <option value="gradient_sunset.png">Sunset Gradient</option>
-            <option value="gradient_pastel.png">Pastel Gradient</option>
-            <option value="shuffle">Shuffle</option>
-          </select>
+          <label for="bg-color1">Background colour 1</label>
+          <input type="color" id="bg-color1" value="#3358a2" />
+        </div>
+        <div class="settings-group">
+          <label for="bg-color2">Background colour 2</label>
+          <input type="color" id="bg-color2" value="#8f5bbb" />
         </div>
         <!-- Theme color selection -->
         <div class="settings-group">
@@ -138,18 +136,39 @@
     <div id="audio-panel" class="audio-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="audio-title">
       <h2 id="audio-title" class="panel-title">Audio Settings</h2>
       <div class="audio-content">
+        <!-- Genre selection -->
         <div class="settings-group">
-          <label for="audio-select">Audio track</label>
-          <select id="audio-select">
-            <option value="none">None</option>
-            <option value="track1">Focus Track 1</option>
-            <option value="track2">Focus Track 2</option>
+          <label for="audio-genre-select">Audio genre</label>
+          <select id="audio-genre-select">
+            <option value="focus">Focus</option>
+            <option value="minecraft">Minecraft</option>
+            <option value="jazz">Jazz Club</option>
+            <option value="country">Country Club</option>
+            <option value="library">Library</option>
+            <option value="cafe">Café</option>
+            <option value="deep">Deep Work</option>
           </select>
         </div>
+        <!-- Track selection within genre -->
+        <div class="settings-group">
+          <label for="audio-select">Track</label>
+          <select id="audio-select">
+            <option value="none">None</option>
+            <!-- Track options will be populated dynamically -->
+          </select>
+        </div>
+        <!-- Playback controls -->
+        <div class="audio-playback-row">
+          <button id="prev-track" class="icon-button" aria-label="Previous track">⏮</button>
+          <button id="audio-play-pause" class="icon-button" aria-label="Play/pause">⏯</button>
+          <button id="next-track" class="icon-button" aria-label="Next track">⏭</button>
+        </div>
+        <!-- Volume and mute -->
         <div class="volume-row">
           <button id="mute-toggle" class="icon-button" aria-label="Toggle mute">🔊</button>
           <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" />
         </div>
+        <!-- Audio progress bar (shown when a track is loaded) -->
         <div class="settings-group audio-progress-group hidden">
           <label for="audio-progress">Audio position</label>
           <input type="range" id="audio-progress" min="0" max="100" step="0.1" value="0" />
