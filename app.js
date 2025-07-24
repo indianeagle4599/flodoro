@@ -23,7 +23,9 @@
     sessionsBeforeLong: 4,
     wallpaper: 'gradient_cool.png',
     audioTrack: 'none',
-    volume: 0.5
+    volume: 0.5,
+    darkMode: false,
+    themePreset: 'custom'
   };
 
   // State variables
@@ -37,6 +39,16 @@
   let timerInterval = null;
   let isRunning = false;
   let postponeUsed = false;
+
+  // List of available wallpapers for shuffle (will be updated if more assets added)
+  const wallpapers = [
+    'gradient_cool.png',
+    'gradient_warm.png',
+    'abstract_green.png',
+    'gradient_forest.png',
+    'gradient_sunset.png',
+    'gradient_pastel.png'
+  ];
 
   // DOM elements
   const appEl = document.getElementById('app');
@@ -57,6 +69,7 @@
   const audioSelectEl = document.getElementById('audio-select');
   const volumeSliderEl = document.getElementById('volume-slider');
   const audioPlayerEl = document.getElementById('audio-player');
+  const darkModeToggleEl = document.getElementById('dark-mode-toggle');
 
   // Additional DOM elements for enhanced controls and settings
   const secondaryControlsEl = document.getElementById('secondary-controls');
@@ -69,18 +82,123 @@
   const audioProgressEl = document.getElementById('audio-progress');
   const audioProgressGroupEl = document.querySelector('.audio-progress-group');
   const colorPickerEl = document.getElementById('color-picker');
+  const themePresetSelectEl = document.getElementById('theme-preset-select');
   const tasksInputEl = document.getElementById('tasks-input');
   const currentTaskEl = document.getElementById('current-task');
 
+  // New DOM elements for additional features
+  const tasksButtonEl = document.getElementById('tasks-button');
+  const historyButtonEl = document.getElementById('history-button');
+  const modeToggleEl = document.getElementById('mode-toggle');
+  const modeMainEl = document.getElementById('mode-main');
+  const modeSubEl = document.getElementById('mode-sub');
+  const tasksPanelEl = document.getElementById('tasks-panel');
+  const historyPanelEl = document.getElementById('history-panel');
+  const newTaskInputEl = document.getElementById('new-task-input');
+  const addTaskButtonEl = document.getElementById('add-task-button');
+  const tasksListEl = document.getElementById('tasks-list');
+  const closeTasksEl = document.getElementById('close-tasks');
+  const historyListEl = document.getElementById('history-list');
+  const clearHistoryEl = document.getElementById('clear-history');
+  const closeHistoryEl = document.getElementById('close-history');
+
+  // Additional panels and controls
+  const audioSettingsButtonEl = document.getElementById('audio-settings-button');
+  const audioPanelEl = document.getElementById('audio-panel');
+  const closeAudioEl = document.getElementById('close-audio');
+  const statsButtonEl = document.getElementById('stats-button');
+  const statsPanelEl = document.getElementById('stats-panel');
+  const closeStatsEl = document.getElementById('close-stats');
+  const statsSummaryEl = document.getElementById('stats-summary');
+  const quoteDisplayEl = document.getElementById('quote-display');
+
+  // Motivational quotes for breaks
+  const quotes = [
+    "Take a deep breath and smile.",
+    "Progress, not perfection.",
+    "Small steps every day add up to big results.",
+    "Rest is part of the process.",
+    "Great things are done by a series of small things brought together."
+  ];
+
   // Task management state
+  // Tasks are stored as objects { text: string, done: boolean }
   let tasks = [];
   let currentTaskIndex = 0;
+
+  // Utility: record task events into history with action and text
+  function recordTaskEvent(action, text) {
+    const timestamp = Date.now();
+    history.push({ type: 'Task', action, text, timestamp });
+    saveHistory();
+    updateHistoryDisplay();
+    updateStatsSummary();
+  }
+
+  // History of sessions
+  let history = [];
+  let sessionStartTime = null;
+  let sessionTotalTime = null;
+
+  /**
+   * Show a random motivational quote in the quote display element. Called at
+   * the beginning of a break session. Hides the quote display first and then
+   * inserts a new quote.
+   */
+  function showRandomQuote() {
+    if (!quoteDisplayEl) return;
+    const index = Math.floor(Math.random() * quotes.length);
+    quoteDisplayEl.textContent = quotes[index];
+    quoteDisplayEl.classList.remove('hidden');
+  }
+
+  /**
+   * Hide the quote display element. Called at the beginning of a work session.
+   */
+  function hideQuote() {
+    if (!quoteDisplayEl) return;
+    quoteDisplayEl.classList.add('hidden');
+  }
 
   // Map audio track identifiers to actual URLs (local or remote)
   const audioSources = {
     track1: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     track2: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
   };
+
+  /**
+   * Compute and display statistics summarising completed sessions and task events.
+   * Counts the number of work, short break and long break sessions as well as
+   * the number of tasks added, completed and deleted. Updates the stats panel.
+   */
+  function updateStatsSummary() {
+    if (!statsSummaryEl) return;
+    const counts = {
+      'Work': 0,
+      'Short Break': 0,
+      'Long Break': 0,
+      'Task Added': 0,
+      'Task Completed': 0,
+      'Task Deleted': 0
+    };
+    history.forEach((item) => {
+      if (item.type === 'Task') {
+        const key = `Task ${item.action}`;
+        if (counts[key] !== undefined) counts[key]++;
+      } else {
+        if (counts[item.type] !== undefined) counts[item.type]++;
+      }
+    });
+    // Compose HTML summary
+    let html = '';
+    html += `<div>Work sessions: ${counts['Work']}</div>`;
+    html += `<div>Short breaks: ${counts['Short Break']}</div>`;
+    html += `<div>Long breaks: ${counts['Long Break']}</div>`;
+    html += `<div>Tasks added: ${counts['Task Added']}</div>`;
+    html += `<div>Tasks completed: ${counts['Task Completed']}</div>`;
+    html += `<div>Tasks deleted: ${counts['Task Deleted']}</div>`;
+    statsSummaryEl.innerHTML = html;
+  }
 
   /*
    * Load preferences from localStorage and apply them to the app. If a
@@ -97,30 +215,43 @@
     const audioTrack = stored.audioTrack || DEFAULTS.audioTrack;
     const volume = typeof stored.volume === 'number' ? stored.volume : DEFAULTS.volume;
     const baseColor = stored.baseColor || '#3b82f6';
-    tasks = Array.isArray(stored.tasks) ? stored.tasks : [];
+    const themePreset = stored.themePreset || DEFAULTS.themePreset;
+    const darkMode = typeof stored.darkMode === 'boolean' ? stored.darkMode : DEFAULTS.darkMode;
+    // Tasks are loaded separately via loadTasks()
     currentTaskIndex = 0;
 
     // Apply to input fields
-    workInputEl.value = Math.round(workDuration / 60);
-    shortBreakInputEl.value = Math.round(shortBreakDuration / 60);
-    longBreakInputEl.value = Math.round(longBreakDuration / 60);
-    sessionsBeforeLongEl.value = sessionsBeforeLong;
-    wallpaperSelectEl.value = wallpaper;
-    audioSelectEl.value = audioTrack;
-    volumeSliderEl.value = volume;
-    colorPickerEl.value = baseColor;
-    tasksInputEl.value = tasks.join('\n');
+    if (workInputEl) workInputEl.value = Math.round(workDuration / 60);
+    if (shortBreakInputEl) shortBreakInputEl.value = Math.round(shortBreakDuration / 60);
+    if (longBreakInputEl) longBreakInputEl.value = Math.round(longBreakDuration / 60);
+    if (sessionsBeforeLongEl) sessionsBeforeLongEl.value = sessionsBeforeLong;
+    if (wallpaperSelectEl) wallpaperSelectEl.value = wallpaper;
+    if (audioSelectEl) audioSelectEl.value = audioTrack;
+    if (volumeSliderEl) volumeSliderEl.value = volume;
+    if (colorPickerEl) colorPickerEl.value = baseColor;
+    if (darkModeToggleEl) darkModeToggleEl.checked = darkMode;
+    if (themePresetSelectEl) themePresetSelectEl.value = themePreset;
 
     applyWallpaper(wallpaper);
     applyAudioTrack(audioTrack);
     audioPlayerEl.volume = volume;
 
-    applyThemeColor(baseColor);
+    // Apply theme preset first (which may override base colour) and then the chosen colour.
+    applyThemePreset(themePreset);
+    applyThemeColor(colorPickerEl.value);
+    applyDarkMode(darkMode);
 
     remainingTime = workDuration;
     updateDisplay();
     updateCurrentTaskDisplay();
     updateAudioProgressVisibility();
+
+    // Load tasks and history separately
+    loadTasks();
+    loadHistory();
+
+    // Update statistics summary after loading history
+    updateStatsSummary();
   }
 
   /*
@@ -137,13 +268,9 @@
     const audioTrack = audioSelectEl.value;
     const volume = parseFloat(volumeSliderEl.value);
     const baseColor = colorPickerEl.value;
-    // Parse tasks from textarea
-    tasks = tasksInputEl.value
-      .split(/\r?\n/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-    currentTaskIndex = 0;
-
+    const themePreset = themePresetSelectEl ? themePresetSelectEl.value : 'custom';
+    const darkMode = darkModeToggleEl && darkModeToggleEl.checked;
+    // Tasks are managed separately; do not modify tasks here
     const prefs = {
       workDuration,
       shortBreakDuration,
@@ -153,7 +280,8 @@
       audioTrack,
       volume,
       baseColor,
-      tasks
+      darkMode,
+      themePreset
     };
     localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
 
@@ -161,6 +289,7 @@
     applyAudioTrack(audioTrack);
     audioPlayerEl.volume = volume;
     applyThemeColor(baseColor);
+    applyDarkMode(darkMode);
 
     // Do not reset the timer; just apply new settings for future sessions
     updateAudioProgressVisibility();
@@ -170,7 +299,13 @@
 
   // Apply the chosen wallpaper by updating the #app background image
   function applyWallpaper(filename) {
-    appEl.style.backgroundImage = `url('assets/images/${filename}')`;
+    if (filename === 'shuffle') {
+      // Pick a random wallpaper from the available list
+      const random = wallpapers[Math.floor(Math.random() * wallpapers.length)];
+      appEl.style.backgroundImage = `url('assets/images/${random}')`;
+    } else {
+      appEl.style.backgroundImage = `url('assets/images/${filename}')`;
+    }
   }
 
   // Apply the chosen audio track
@@ -264,6 +399,62 @@
     root.style.setProperty('--color-accent-dark', darker);
   }
 
+  /**
+   * Apply a predefined theme preset by updating the accent colour. When a preset
+   * is chosen, the colour picker is set to that colour and the accent
+   * variables are recalculated via applyThemeColor(). If 'custom' is
+   * selected, the colour picker retains its current value. Supported
+   * presets draw inspiration from Apple’s palette: Apple Blue, Apple Green
+   * and Apple Pink. Users can still fine‑tune the colour via the picker.
+   */
+  function applyThemePreset(preset) {
+    let colour;
+    switch (preset) {
+      case 'apple-blue':
+        colour = '#007AFF';
+        break;
+      case 'apple-green':
+        colour = '#34C759';
+        break;
+      case 'apple-pink':
+        colour = '#FF2D55';
+        break;
+      default:
+        // Custom: do not change the colour
+        return;
+    }
+    // Update the colour picker and apply new colour
+    if (colorPickerEl) {
+      colorPickerEl.value = colour;
+    }
+    applyThemeColor(colour);
+  }
+
+  /**
+   * Apply or remove dark mode by setting CSS variables on the root. When
+   * enabled, the primary text colour becomes light, the secondary colour
+   * becomes muted and the overlay remains dark. When disabled (light mode),
+   * colours invert to a lighter palette. This approach avoids toggling
+   * classes throughout the markup and keeps the UI minimal.
+   */
+  function applyDarkMode(enabled) {
+    const root = document.documentElement;
+    if (enabled) {
+      root.style.setProperty('--color-primary', '#ffffff');
+      root.style.setProperty('--color-secondary', '#d1d5db');
+      root.style.setProperty('--color-bg-overlay', 'rgba(0,0,0,0.35)');
+      // Dark panels: use a translucent dark background for frosted glass effect
+      root.style.setProperty('--panel-bg', 'rgba(17, 24, 39, 0.75)');
+    } else {
+      // Light mode: invert colours for a brighter interface reminiscent of macOS
+      root.style.setProperty('--color-primary', '#1f2937');
+      root.style.setProperty('--color-secondary', '#374151');
+      root.style.setProperty('--color-bg-overlay', 'rgba(255,255,255,0.4)');
+      // Light panels: use translucent light background
+      root.style.setProperty('--panel-bg', 'rgba(255, 255, 255, 0.6)');
+    }
+  }
+
   // Show or hide the audio progress bar depending on whether a track is loaded
   function updateAudioProgressVisibility() {
     if (!audioProgressGroupEl) return;
@@ -277,9 +468,21 @@
   // Update the on‑screen task label
   function updateCurrentTaskDisplay() {
     if (currentTaskEl) {
-      if (tasks.length > 0 && currentTaskIndex < tasks.length) {
-        currentTaskEl.textContent = `Current task: ${tasks[currentTaskIndex]}`;
-        currentTaskEl.classList.remove('hidden');
+    if (tasks.length > 0 && currentTaskIndex < tasks.length) {
+        const current = tasks[currentTaskIndex];
+        // Skip completed tasks
+        if (current.done) {
+          // Find next incomplete task
+          let idx = currentTaskIndex;
+          while (idx < tasks.length && tasks[idx].done) idx++;
+          currentTaskIndex = idx;
+        }
+        if (currentTaskIndex < tasks.length) {
+          currentTaskEl.textContent = `Current task: ${tasks[currentTaskIndex].text}`;
+          currentTaskEl.classList.remove('hidden');
+        } else {
+          currentTaskEl.classList.add('hidden');
+        }
       } else {
         currentTaskEl.classList.add('hidden');
       }
@@ -306,6 +509,7 @@
   function updateDisplay() {
     timerDisplayEl.textContent = formatTime(remainingTime);
     sessionLabelEl.textContent = currentSessionType;
+    updateModeToggle();
   }
 
   // Start or resume the timer
@@ -313,28 +517,32 @@
     if (isRunning) {
       // Pause
       clearInterval(timerInterval);
+      timerInterval = null;
       isRunning = false;
       startButtonEl.textContent = 'Resume';
       return;
     }
 
-    // If starting for the first time of a session, update the remainingTime accordingly
-    // Start/resume
+    // Starting or resuming
     isRunning = true;
     startButtonEl.textContent = 'Pause';
-
+    // If this is the first time starting this session, set start time and total time
+    if (sessionStartTime === null) {
+      sessionStartTime = Date.now();
+      sessionTotalTime = remainingTime;
+    }
     // If audio is selected and not already playing, start it
     if (audioPlayerEl.src && audioPlayerEl.paused) {
       audioPlayerEl.play().catch(() => {
         // Autoplay might be blocked until user interacts, ignore
       });
     }
-
     timerInterval = setInterval(() => {
       remainingTime--;
       updateDisplay();
       if (remainingTime <= 0) {
         clearInterval(timerInterval);
+        timerInterval = null;
         isRunning = false;
         handleSessionEnd();
       }
@@ -346,6 +554,7 @@
   // Reset timer to initial values based on current preferences
   function resetTimer() {
     clearInterval(timerInterval);
+    timerInterval = null;
     isRunning = false;
     sessionCount = 0;
     currentSessionType = SESSION.WORK;
@@ -353,14 +562,20 @@
     startButtonEl.textContent = 'Start';
     postponeButtonEl.classList.add('hidden');
     postponeUsed = false;
+    sessionStartTime = null;
+    sessionTotalTime = null;
     updateDisplay();
     updateCurrentTaskDisplay();
+    hideQuote();
   }
 
   // Transition to the next session based on current state
   function handleSessionEnd() {
     // Send a browser notification if permission granted
     sendNotification(`${currentSessionType} complete!`, currentSessionType === SESSION.WORK ? 'Time for a break.' : 'Back to work.');
+
+    // Record the finished session
+    recordSession();
 
     if (currentSessionType === SESSION.WORK) {
       sessionCount++;
@@ -379,12 +594,23 @@
       }
       postponeUsed = false;
       postponeButtonEl.classList.remove('hidden');
+      // Show a random quote for break
+      showRandomQuote();
     } else {
       // Break finished, return to work
       currentSessionType = SESSION.WORK;
       remainingTime = workDuration;
       postponeButtonEl.classList.add('hidden');
+      // Hide quote when returning to work
+      hideQuote();
     }
+    // If wallpaper is set to shuffle, pick a new random wallpaper for each session
+    if (wallpaperSelectEl && wallpaperSelectEl.value === 'shuffle') {
+      applyWallpaper('shuffle');
+    }
+    // Reset for next session; new startTime will be set in startTimer()
+    sessionStartTime = null;
+    sessionTotalTime = null;
     updateDisplay();
     // Automatically start next session
     startTimer();
@@ -404,6 +630,11 @@
       closeSettings();
       return;
     }
+    // Close other panels before opening settings
+    closeTasks();
+    closeHistory();
+    closeAudio();
+    closeStats();
     settingsPanelEl.classList.remove('hidden');
     settingsPanelEl.classList.add('slideout');
     // Pause timer when settings open
@@ -424,27 +655,49 @@
     postponeUsed = true;
     postponeButtonEl.classList.add('hidden');
     updateDisplay();
+    // Adjust total time for history
+    if (sessionTotalTime !== null) {
+      sessionTotalTime += 5 * 60;
+    }
   }
 
   // Add or subtract minutes from the current remaining time
   function addMinutes(n) {
     remainingTime += n * 60;
     updateDisplay();
+    if (sessionTotalTime !== null) {
+      sessionTotalTime += n * 60;
+    }
   }
   function subtractMinutes(n) {
     remainingTime = Math.max(1, remainingTime - n * 60);
     updateDisplay();
+    if (sessionTotalTime !== null) {
+      sessionTotalTime = Math.max(1, sessionTotalTime - n * 60);
+    }
   }
   // Skip directly to a work session
   function skipToWork() {
+    // Record the current session before switching
+    recordSession();
     currentSessionType = SESSION.WORK;
     remainingTime = workDuration;
+    sessionStartTime = null;
+    sessionTotalTime = null;
     postponeUsed = false;
     postponeButtonEl.classList.add('hidden');
     updateDisplay();
+    // Hide quote when manually switching to work
+    hideQuote();
+    // Shuffle wallpaper if enabled
+    if (wallpaperSelectEl && wallpaperSelectEl.value === 'shuffle') {
+      applyWallpaper('shuffle');
+    }
   }
   // Skip directly to the next break session (short or long depending on cycle)
   function skipToBreak() {
+    // Record the current session before switching
+    recordSession();
     const nextCount = sessionCount + 1;
     if (nextCount % sessionsBeforeLong === 0) {
       currentSessionType = SESSION.LONG_BREAK;
@@ -453,9 +706,291 @@
       currentSessionType = SESSION.SHORT_BREAK;
       remainingTime = shortBreakDuration;
     }
+    sessionStartTime = null;
+    sessionTotalTime = null;
     postponeUsed = false;
     postponeButtonEl.classList.remove('hidden');
     updateDisplay();
+    // Show a random quote when manually switching to break
+    showRandomQuote();
+    // Shuffle wallpaper if enabled
+    if (wallpaperSelectEl && wallpaperSelectEl.value === 'shuffle') {
+      applyWallpaper('shuffle');
+    }
+  }
+
+  // Toggle session mode between work and break via mode toggle UI or keyboard
+  function toggleSessionMode() {
+    // Add rotate animation class to mode toggle for 3D flip
+    if (modeToggleEl) {
+      modeToggleEl.classList.add('rotated');
+      setTimeout(() => {
+        modeToggleEl.classList.remove('rotated');
+      }, 600);
+    }
+    if (currentSessionType === SESSION.WORK) {
+      skipToBreak();
+    } else {
+      skipToWork();
+    }
+    updateDisplay();
+  }
+
+  // Update mode toggle text to reflect current and next session types
+  function updateModeToggle() {
+    if (!modeMainEl || !modeSubEl) return;
+    if (currentSessionType === SESSION.WORK) {
+      modeMainEl.textContent = 'Work';
+      modeSubEl.textContent = 'Break';
+    } else {
+      // Both short and long breaks are simply labelled break
+      modeMainEl.textContent = 'Break';
+      modeSubEl.textContent = 'Work';
+    }
+  }
+
+  /**
+   * History and tasks management
+   */
+  // Load tasks from localStorage (pomodoroTasks) and convert to array of objects
+  function loadTasks() {
+    try {
+      const storedTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
+      if (Array.isArray(storedTasks)) {
+        tasks = storedTasks.map((t) => {
+          if (typeof t === 'string') return { text: t, done: false };
+          // Already an object
+          return { text: t.text || '', done: !!t.done };
+        });
+      } else {
+        tasks = [];
+      }
+    } catch (e) {
+      tasks = [];
+    }
+    currentTaskIndex = 0;
+    updateCurrentTaskDisplay();
+    updateTasksList();
+  }
+
+  // Save tasks to localStorage
+  function saveTasks() {
+    localStorage.setItem('pomodoroTasks', JSON.stringify(tasks));
+  }
+
+  // Render tasks into the tasks panel list
+  function updateTasksList() {
+    if (!tasksListEl) return;
+    // Clear existing list
+    tasksListEl.innerHTML = '';
+    tasks.forEach((task, index) => {
+      const li = document.createElement('li');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = task.done;
+      checkbox.addEventListener('change', () => {
+        const wasDone = task.done;
+        task.done = checkbox.checked;
+        // Log completion event when transitioning from not done to done
+        if (!wasDone && task.done) {
+          recordTaskEvent('Completed', task.text);
+        }
+        // If marking a task done before currentTaskIndex, update index
+        if (checkbox.checked && index === currentTaskIndex && currentTaskIndex < tasks.length) {
+          currentTaskIndex++;
+          updateCurrentTaskDisplay();
+        }
+        saveTasks();
+        updateTasksList();
+      });
+      const span = document.createElement('span');
+      span.textContent = task.text;
+      if (task.done) {
+        span.style.textDecoration = 'line-through';
+        span.style.opacity = '0.6';
+      }
+      // Delete button for each task
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '🗑️';
+      delBtn.className = 'delete-button';
+      delBtn.addEventListener('click', () => {
+        const removed = tasks.splice(index, 1)[0];
+        // Adjust currentTaskIndex if necessary
+        if (index < currentTaskIndex) {
+          currentTaskIndex--;
+        } else if (index === currentTaskIndex) {
+          // Current task was removed; currentTaskIndex now points to same index
+          // but tasks length decreased; update display accordingly
+        }
+        recordTaskEvent('Deleted', removed.text);
+        saveTasks();
+        updateTasksList();
+        updateCurrentTaskDisplay();
+      });
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      li.appendChild(delBtn);
+      tasksListEl.appendChild(li);
+    });
+  }
+
+  // Add a new task from input field
+  function addTask() {
+    if (!newTaskInputEl) return;
+    const value = newTaskInputEl.value.trim();
+    if (value.length === 0) return;
+    tasks.push({ text: value, done: false });
+    newTaskInputEl.value = '';
+    saveTasks();
+    updateTasksList();
+    updateCurrentTaskDisplay();
+    // Record task addition event
+    recordTaskEvent('Added', value);
+  }
+
+  // Open and close tasks panel
+  function openTasks() {
+    if (tasksPanelEl.classList.contains('hidden')) {
+      // Close other panels first
+      closeSettings();
+      closeHistory();
+      tasksPanelEl.classList.remove('hidden');
+      tasksPanelEl.classList.add('slideout');
+    } else {
+      closeTasks();
+    }
+  }
+  function closeTasks() {
+    tasksPanelEl.classList.add('hidden');
+    tasksPanelEl.classList.remove('slideout');
+  }
+
+  // Load history from localStorage
+  function loadHistory() {
+    try {
+      const storedHistory = JSON.parse(localStorage.getItem('pomodoroHistory') || '[]');
+      if (Array.isArray(storedHistory)) {
+        history = storedHistory;
+      } else {
+        history = [];
+      }
+    } catch (e) {
+      history = [];
+    }
+    updateHistoryDisplay();
+  }
+  // Save history to localStorage
+  function saveHistory() {
+    localStorage.setItem('pomodoroHistory', JSON.stringify(history));
+  }
+
+  // Record the current session to history if a session is in progress
+  function recordSession() {
+    if (!sessionStartTime || sessionTotalTime === null) return;
+    const endTime = Date.now();
+    const elapsed = Math.floor((endTime - sessionStartTime) / 1000);
+    history.push({
+      type: currentSessionType,
+      start: sessionStartTime,
+      end: endTime,
+      duration: sessionTotalTime,
+      elapsed: elapsed
+    });
+    saveHistory();
+    updateHistoryDisplay();
+    updateStatsSummary();
+    // Reset start time so that we don't double-record
+    sessionStartTime = null;
+    sessionTotalTime = null;
+  }
+
+  // Render history list into history panel
+  function updateHistoryDisplay() {
+    if (!historyListEl) return;
+    historyListEl.innerHTML = '';
+    history.forEach((item) => {
+      const li = document.createElement('li');
+      // Distinguish between session entries and task events
+      if (item.type === 'Task') {
+        const date = new Date(item.timestamp);
+        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // Show action (Added/Completed/Deleted) and task text
+        li.innerHTML = `<span>${item.action} task</span><span>${item.text} @ ${timeStr}</span>`;
+      } else {
+        // Format start and end times to local time strings
+        const startDate = new Date(item.start);
+        const endDate = new Date(item.end);
+        const startStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const endStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const durationMinutes = Math.floor(item.elapsed / 60);
+        const durationSeconds = item.elapsed % 60;
+        const durationStr = `${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`;
+        li.innerHTML = `<span>${item.type}</span><span>${startStr}–${endStr} (${durationStr})</span>`;
+      }
+      historyListEl.appendChild(li);
+    });
+  }
+
+  // Clear history entirely
+  function clearHistory() {
+    history = [];
+    saveHistory();
+    updateHistoryDisplay();
+  }
+
+  // Open and close history panel
+  function openHistory() {
+    if (historyPanelEl.classList.contains('hidden')) {
+      // Close other panels
+      closeSettings();
+      closeTasks();
+      historyPanelEl.classList.remove('hidden');
+      historyPanelEl.classList.add('slideout');
+    } else {
+      closeHistory();
+    }
+  }
+  function closeHistory() {
+    historyPanelEl.classList.add('hidden');
+    historyPanelEl.classList.remove('slideout');
+  }
+
+  /** Audio settings panel functions */
+  function openAudio() {
+    if (audioPanelEl.classList.contains('hidden')) {
+      // Close other panels
+      closeSettings();
+      closeTasks();
+      closeHistory();
+      closeStats();
+      audioPanelEl.classList.remove('hidden');
+      audioPanelEl.classList.add('slideout');
+    } else {
+      closeAudio();
+    }
+  }
+  function closeAudio() {
+    audioPanelEl.classList.add('hidden');
+    audioPanelEl.classList.remove('slideout');
+  }
+
+  /** Statistics panel functions */
+  function openStats() {
+    if (statsPanelEl.classList.contains('hidden')) {
+      closeSettings();
+      closeTasks();
+      closeHistory();
+      closeAudio();
+      statsPanelEl.classList.remove('hidden');
+      statsPanelEl.classList.add('slideout');
+      updateStatsSummary();
+    } else {
+      closeStats();
+    }
+  }
+  function closeStats() {
+    statsPanelEl.classList.add('hidden');
+    statsPanelEl.classList.remove('slideout');
   }
   // Toggle audio playback independently of the timer
   function toggleAudio() {
@@ -521,11 +1056,10 @@
         break;
       case 'b':
       case 'B':
-        skipToBreak();
-        break;
       case 'w':
       case 'W':
-        skipToWork();
+        // Toggle session mode for both b and w keys
+        toggleSessionMode();
         break;
       case 'm':
       case 'M':
@@ -534,6 +1068,14 @@
       case 'v':
       case 'V':
         toggleAudio();
+        break;
+      case 't':
+      case 'T':
+        openTasks();
+        break;
+      case 'h':
+      case 'H':
+        openHistory();
         break;
       default:
         break;
@@ -565,8 +1107,7 @@
     // Secondary controls
     if (addMinuteEl) addMinuteEl.addEventListener('click', () => addMinutes(1));
     if (subtractMinuteEl) subtractMinuteEl.addEventListener('click', () => subtractMinutes(1));
-    if (skipToWorkEl) skipToWorkEl.addEventListener('click', skipToWork);
-    if (skipToBreakEl) skipToBreakEl.addEventListener('click', skipToBreak);
+    // Skip buttons removed; session toggle handled by mode toggle
     if (audioToggleEl) audioToggleEl.addEventListener('click', toggleAudio);
     if (muteToggleEl) muteToggleEl.addEventListener('click', toggleMute);
     if (audioProgressEl) audioProgressEl.addEventListener('input', seekAudio);
@@ -604,12 +1145,104 @@
         }
       }
     });
+    // Close tasks panel when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!tasksPanelEl.classList.contains('hidden')) {
+        const target = e.target;
+        if (!tasksPanelEl.contains(target) && target !== tasksButtonEl) {
+          closeTasks();
+        }
+      }
+    });
+    // Close history panel when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!historyPanelEl.classList.contains('hidden')) {
+        const target = e.target;
+        if (!historyPanelEl.contains(target) && target !== historyButtonEl) {
+          closeHistory();
+        }
+      }
+    });
+    // Mode toggle click
+    if (modeToggleEl) modeToggleEl.addEventListener('click', toggleSessionMode);
+    // Tasks and history buttons
+    if (tasksButtonEl) tasksButtonEl.addEventListener('click', openTasks);
+    if (historyButtonEl) historyButtonEl.addEventListener('click', openHistory);
+    // Close buttons inside panels
+    if (closeTasksEl) closeTasksEl.addEventListener('click', closeTasks);
+    if (closeHistoryEl) closeHistoryEl.addEventListener('click', closeHistory);
+    // Add task button
+    if (addTaskButtonEl) addTaskButtonEl.addEventListener('click', addTask);
+    // Enter key on new task input
+    if (newTaskInputEl) newTaskInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTask();
+      }
+    });
+    // Clear history button
+    if (clearHistoryEl) clearHistoryEl.addEventListener('click', clearHistory);
     // Update theme color on input
     if (colorPickerEl) colorPickerEl.addEventListener('input', () => {
+      // When the user picks a custom colour, set preset to custom
+      if (themePresetSelectEl) themePresetSelectEl.value = 'custom';
       applyThemeColor(colorPickerEl.value);
+      // Save updated colour and preset immediately
+      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+      prefs.baseColor = colorPickerEl.value;
+      prefs.themePreset = 'custom';
+      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    });
+    // Dark mode toggle
+    if (darkModeToggleEl) darkModeToggleEl.addEventListener('change', () => {
+      const enabled = darkModeToggleEl.checked;
+      applyDarkMode(enabled);
+      // Save dark mode preference immediately
+      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+      prefs.darkMode = enabled;
+      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    });
+    // Theme preset selection
+    if (themePresetSelectEl) themePresetSelectEl.addEventListener('change', () => {
+      const preset = themePresetSelectEl.value;
+      applyThemePreset(preset);
+      // Save preset and base colour immediately
+      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+      prefs.themePreset = preset;
+      // If the preset is not custom, update baseColour in preferences to preserve colour across reloads
+      if (preset !== 'custom') {
+        prefs.baseColor = colorPickerEl.value;
+      }
+      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
     });
     // keyboard support
     document.addEventListener('keydown', handleKeydown);
+
+    // Close audio panel when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!audioPanelEl.classList.contains('hidden')) {
+        const target = e.target;
+        if (!audioPanelEl.contains(target) && target !== audioSettingsButtonEl) {
+          closeAudio();
+        }
+      }
+    });
+    // Close stats panel when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!statsPanelEl.classList.contains('hidden')) {
+        const target = e.target;
+        if (!statsPanelEl.contains(target) && target !== statsButtonEl) {
+          closeStats();
+        }
+      }
+    });
+
+    // Audio settings button and close button
+    if (audioSettingsButtonEl) audioSettingsButtonEl.addEventListener('click', openAudio);
+    if (closeAudioEl) closeAudioEl.addEventListener('click', closeAudio);
+    // Stats button and close button
+    if (statsButtonEl) statsButtonEl.addEventListener('click', openStats);
+    if (closeStatsEl) closeStatsEl.addEventListener('click', closeStats);
   }
 
   // Initialise application

@@ -16,10 +16,11 @@
   --color-accent: #3b82f6;
   --color-danger: #ef4444;
   --color-bg-overlay: rgba(0, 0, 0, 0.35);
+  --panel-bg: rgba(17, 24, 39, 0.75);
   --font-size-title: 2.5rem;
   --font-size-timer: 6rem;
   --font-size-label: 1.5rem;
-  --border-radius: 8px;
+  --border-radius: 12px;
 }
 
 html, body {
@@ -80,6 +81,12 @@ html, body {
   font-size: var(--font-size-title);
   font-weight: 600;
 }
+
+/* Header buttons container groups tasks, history and settings icons */
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
 .icon-button {
   background: transparent;
   border: none;
@@ -96,6 +103,41 @@ html, body {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* Mode toggle styling: displays current and next session types */
+.mode-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  /* include transform-style and backface visibility for smoother 3D flips */
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition: transform 0.6s ease, background 0.2s ease, border 0.2s ease;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius);
+  perspective: 800px; /* allow 3D flip */
+}
+/* Highlight on hover */
+.mode-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-accent);
+}
+/* Rotation animation when toggled; JS adds/removes this class */
+.mode-toggle.rotated {
+  transform: rotateX(360deg);
+}
+.mode-main {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.mode-sub {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
 /* Main content area containing timer and controls */
 .main-content {
   flex: 1;
@@ -107,11 +149,8 @@ html, body {
   padding: 1rem;
 }
 .session-label {
-  font-size: var(--font-size-label);
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: var(--color-secondary);
+  /* Hide the redundant session label since mode toggle displays it */
+  display: none;
 }
 .timer-display {
   font-size: var(--font-size-timer);
@@ -148,19 +187,213 @@ html, body {
 }
 
 /* Settings panel styles */
-.settings-panel {
+/* Panel styling with frosted glass effect for settings, tasks, history, audio and stats */
+.settings-panel,
+.tasks-panel,
+.history-panel,
+.audio-panel,
+.stats-panel {
   position: absolute;
   top: 4rem; /* below header */
-  right: 1rem;
+  /* horizontal offsets are set individually in specific definitions */
   width: 320px;
   max-width: 90vw;
-  background: rgba(17, 24, 39, 0.95);
+  background: var(--panel-bg);
+  backdrop-filter: blur(20px);
   border-radius: var(--border-radius);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1rem;
   color: var(--color-primary);
   z-index: 2;
   overflow-y: auto;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Position individual panels relative to their respective icons */
+.settings-panel {
+  right: 1rem;
+}
+
+/* Offset tasks and history panels relative to their header icons */
+.tasks-panel,
+.history-panel {
+  right: 4.5rem;
+}
+
+/* Offset audio and statistics panels relative to header icons */
+.audio-panel,
+.stats-panel {
+  right: 7rem;
+}
+.audio-panel.slideout,
+.stats-panel.slideout {
+  transform-origin: top right;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  opacity: 0;
+  transform: scale(0.95);
+}
+.audio-panel.slideout:not(.hidden),
+.stats-panel.slideout:not(.hidden) {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Volume slider row inside audio panel */
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.volume-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-secondary);
+  outline: none;
+}
+.volume-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.volume-row input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.5);
+  background: var(--color-accent-light);
+}
+
+/* Stats summary styling */
+.stats-summary {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Quote display styling */
+.quote-display {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--border-radius);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+  max-width: 80%;
+  text-align: center;
+}
+
+/* Ensure slideout animations for tasks/history panels */
+.tasks-panel.slideout,
+.history-panel.slideout {
+  transform-origin: top right;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  opacity: 0;
+  transform: scale(0.95);
+}
+.tasks-panel.slideout:not(.hidden),
+.history-panel.slideout:not(.hidden) {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Panel title for tasks and history */
+.panel-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+/* Content layout for tasks panel */
+.tasks-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.task-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.task-input-row input[type="text"] {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  border: none;
+  background: #374151;
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+.tasks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.tasks-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+/* Delete button for tasks */
+.tasks-list li .delete-button {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--color-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: color 0.2s ease;
+}
+.tasks-list li .delete-button:hover {
+  color: var(--color-danger);
+}
+.tasks-list li input[type="checkbox"] {
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+.tasks-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Content layout for history panel */
+.history-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.history-list li {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+.history-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 /* Slideout animation: hidden panels slide up slightly and fade */
