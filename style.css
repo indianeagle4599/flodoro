@@ -1,0 +1,214 @@
+/*
+ * Stylesheet for the Pomodoro Timer web application
+ *
+ * The design focuses on simplicity and minimal distraction, with
+ * clean typography and generous spacing. A full‑screen background
+ * image is overlaid with a subtle colour tint to improve contrast
+ * for the timer and controls. All colours and sizes are defined
+ * with CSS variables to make future theme customisation easy.
+ */
+
+/* Root variables for colours, sizes and fonts */
+:root {
+  --font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --color-primary: #ffffff;
+  --color-secondary: #d1d5db;
+  --color-accent: #3b82f6;
+  --color-danger: #ef4444;
+  --color-bg-overlay: rgba(0, 0, 0, 0.35);
+  --font-size-title: 2.5rem;
+  --font-size-timer: 6rem;
+  --font-size-label: 1.5rem;
+  --border-radius: 8px;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-family);
+  color: var(--color-primary);
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  /* The background image will be updated by JavaScript via inline style */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* A dark overlay to enhance readability over the background image */
+#app::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-bg-overlay);
+  z-index: 0;
+}
+
+/* Ensure the main content sits above the overlay */
+.app-header,
+.main-content,
+.settings-panel {
+  position: relative;
+  z-index: 1;
+}
+
+/* Header styling */
+.app-header {
+  width: 100%;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+}
+.app-title {
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: 600;
+}
+.icon-button {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-primary);
+  padding: 0.5rem;
+}
+.icon-button:hover {
+  color: var(--color-accent);
+}
+
+/* Main content area containing timer and controls */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+.session-label {
+  font-size: var(--font-size-label);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--color-secondary);
+}
+.timer-display {
+  font-size: var(--font-size-timer);
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  letter-spacing: 2px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 1rem;
+}
+.control-button {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  min-width: 100px;
+  transition: background 0.2s ease;
+}
+.control-button:hover {
+  background: #2563eb;
+}
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.hidden {
+  display: none !important;
+}
+
+/* Settings panel styles */
+.settings-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 400px;
+  background: rgba(17, 24, 39, 0.9);
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--color-primary);
+}
+.settings-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+.settings-group {
+  display: flex;
+  flex-direction: column;
+}
+.settings-group label {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-secondary);
+}
+.settings-group input[type="number"],
+.settings-group select {
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  border: none;
+  background: #374151;
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+.settings-group input[type="range"] {
+  width: 100%;
+}
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.settings-actions .control-button {
+  flex: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .timer-display {
+    font-size: 4rem;
+  }
+  .app-title {
+    font-size: 1.75rem;
+  }
+  .control-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  .settings-panel {
+    padding: 1rem;
+  }
+}
