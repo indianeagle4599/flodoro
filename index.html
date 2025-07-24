@@ -22,48 +22,81 @@
         <button id="reset-button" class="control-button">Reset</button>
         <button id="postpone-button" class="control-button hidden">Postpone Break</button>
       </div>
+
+      <!-- Secondary controls: adjust time, skip sessions, audio control -->
+      <div id="secondary-controls" class="secondary-controls">
+        <button id="add-minute" class="icon-button" aria-label="Add one minute">+1&nbsp;min</button>
+        <button id="subtract-minute" class="icon-button" aria-label="Remove one minute">−1&nbsp;min</button>
+        <button id="skip-to-work" class="icon-button" aria-label="Switch to work session">→&nbsp;Work</button>
+        <button id="skip-to-break" class="icon-button" aria-label="Switch to break session">→&nbsp;Break</button>
+        <button id="audio-toggle" class="icon-button" aria-label="Toggle audio">🔈</button>
+      </div>
+
+      <!-- Display the current task (if task manager is enabled) -->
+      <div id="current-task" class="current-task hidden"></div>
     </main>
-    <div id="settings-panel" class="settings-panel hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <!-- Settings panel: slides out from the top right under the settings button. Hides when not active. -->
+    <div id="settings-panel" class="settings-panel slideout hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <h2 id="settings-title" class="settings-title">Settings</h2>
-      <div class="settings-group">
-        <label for="work-duration">Work duration (minutes)</label>
-        <input type="number" id="work-duration" min="1" value="25" />
-      </div>
-      <div class="settings-group">
-        <label for="short-break-duration">Short break (minutes)</label>
-        <input type="number" id="short-break-duration" min="1" value="5" />
-      </div>
-      <div class="settings-group">
-        <label for="long-break-duration">Long break (minutes)</label>
-        <input type="number" id="long-break-duration" min="1" value="15" />
-      </div>
-      <div class="settings-group">
-        <label for="sessions-before-long">Pomodoros before long break</label>
-        <input type="number" id="sessions-before-long" min="1" value="4" />
-      </div>
-      <div class="settings-group">
-        <label for="wallpaper-select">Background image</label>
-        <select id="wallpaper-select">
-          <option value="gradient_cool.png">Cool Gradient</option>
-          <option value="gradient_warm.png">Warm Gradient</option>
-          <option value="abstract_green.png">Abstract Green</option>
-        </select>
-      </div>
-      <div class="settings-group">
-        <label for="audio-select">Audio track</label>
-        <select id="audio-select">
-          <option value="none">None</option>
-          <option value="track1">Focus Track 1</option>
-          <option value="track2">Focus Track 2</option>
-        </select>
-      </div>
-      <div class="settings-group">
-        <label for="volume-slider">Volume</label>
-        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" />
-      </div>
-      <div class="settings-actions">
-        <button id="save-settings" class="control-button">Save</button>
-        <button id="close-settings" class="control-button">Close</button>
+      <div class="settings-content">
+        <!-- Duration settings -->
+        <div class="settings-group">
+          <label for="work-duration">Work (min)</label>
+          <input type="number" id="work-duration" min="1" value="25" />
+        </div>
+        <div class="settings-group">
+          <label for="short-break-duration">Short break (min)</label>
+          <input type="number" id="short-break-duration" min="1" value="5" />
+        </div>
+        <div class="settings-group">
+          <label for="long-break-duration">Long break (min)</label>
+          <input type="number" id="long-break-duration" min="1" value="15" />
+        </div>
+        <div class="settings-group">
+          <label for="sessions-before-long">Pomodoros before long break</label>
+          <input type="number" id="sessions-before-long" min="1" value="4" />
+        </div>
+        <!-- Wallpaper and audio selection -->
+        <div class="settings-group">
+          <label for="wallpaper-select">Background</label>
+          <select id="wallpaper-select">
+            <option value="gradient_cool.png">Cool Gradient</option>
+            <option value="gradient_warm.png">Warm Gradient</option>
+            <option value="abstract_green.png">Abstract Green</option>
+          </select>
+        </div>
+        <div class="settings-group">
+          <label for="audio-select">Audio track</label>
+          <select id="audio-select">
+            <option value="none">None</option>
+            <option value="track1">Focus Track 1</option>
+            <option value="track2">Focus Track 2</option>
+          </select>
+        </div>
+        <!-- Volume control with mute toggle -->
+        <div class="settings-group volume-group">
+          <button id="mute-toggle" class="icon-button" aria-label="Toggle mute">🔊</button>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" />
+        </div>
+        <!-- Theme color selection -->
+        <div class="settings-group">
+          <label for="color-picker">Theme color</label>
+          <input type="color" id="color-picker" value="#3b82f6" />
+        </div>
+        <!-- Task manager -->
+        <div class="settings-group">
+          <label for="tasks-input">Tasks (one per line)</label>
+          <textarea id="tasks-input" rows="4" placeholder="Enter tasks here..."></textarea>
+        </div>
+        <!-- Audio progress display -->
+        <div class="settings-group audio-progress-group hidden">
+          <label for="audio-progress">Audio position</label>
+          <input type="range" id="audio-progress" min="0" max="100" step="0.1" value="0" />
+        </div>
+        <div class="settings-actions">
+          <button id="save-settings" class="control-button">Save</button>
+          <button id="close-settings" class="control-button">Close</button>
+        </div>
       </div>
     </div>
   </div>
