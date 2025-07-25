@@ -19,7 +19,7 @@
   --panel-bg: rgba(17, 24, 39, 0.75);
   --font-size-title: 2.5rem;
   --font-size-timer: 6rem;
-  --font-size-label: 1.5rem;
+  --font-size-label: 2.5rem;
   --border-radius: 12px;
   --input-bg: #374151;
   --input-color: #ffffff;
@@ -81,7 +81,7 @@ body {
   width: 100%;
   padding: .75rem 1.25rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   box-sizing: border-box;
 }
@@ -117,14 +117,12 @@ body {
   padding: 0.25rem 0.5rem;
   line-height: 1;
   border-radius: var(--border-radius);
-  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .icon-button:hover {
   color: var(--color-accent);
-  /* Slightly stronger hover effect and lift */
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Mode toggle styling: displays current and next session types */
@@ -157,13 +155,13 @@ body {
 
 .mode-main {
   font-size: var(--font-size-label);
-  font-weight: 600;
+  font-weight: bolder;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
 .mode-sub {
-  font-size: 0.75rem;
+  font-size: 1.25rem;
   opacity: 0.7;
 }
 
@@ -186,7 +184,7 @@ body {
 .timer-display {
   font-size: var(--font-size-timer);
   font-weight: bold;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   letter-spacing: 2px;
 }
 
@@ -195,31 +193,27 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Buttons used for adjusting time */
 .time-adjust-btn {
-  font-size: 1.35rem;
-  width: 12rem;
-  height: 1.8rem;
+  font-size: 1.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--border-radius);
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   color: var(--color-primary);
   border: none;
   cursor: pointer;
-  transition: background 0.25s ease, transform 0.25s ease;
+  transition: background 0.2s ease;
 }
 
 .time-adjust-btn:hover {
-  /* Highlight bars with the accent colour on hover */
-  background: var(--color-accent);
-  color: #fff;
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Controls */
@@ -228,22 +222,30 @@ body {
   gap: 1rem;
 }
 
+/*
+ * Buttons used across the app (start/pause, reset, save, close, etc.).
+ * Use the accent colour for the background and dynamically computed
+ * accent‑text colour for the icon/text so that contrast remains high
+ * regardless of the chosen accent colour. Hover state darkens the
+ * background slightly using the darker accent colour generated in
+ * JavaScript (via applyThemeColor). Disabled state appears faded.
+ */
 .control-button {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--accent-text);
   border: none;
   border-radius: var(--border-radius);
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   cursor: pointer;
   min-width: 100px;
-  transition: background 0.25s ease, transform 0.25s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
+/* Hover state uses the darker accent colour for a subtle lift */
 .control-button:hover {
-  /* Darker shade and subtle lift on hover */
-  background: #2563eb;
-  transform: translateY(-1px);
+  background: var(--color-accent-dark);
+  color: var(--accent-text);
 }
 
 .control-button:disabled {
@@ -266,7 +268,7 @@ body {
   top: 4rem;
   /* below header */
   /* horizontal offsets are set individually in specific definitions */
-  width: 320px;
+  width: 22rem;
   max-width: 90vw;
   background: var(--panel-bg);
   backdrop-filter: blur(20px);
@@ -281,20 +283,12 @@ body {
 }
 
 /* Position individual panels relative to their respective icons */
-.settings-panel {
-  right: 1rem;
-}
-
-/* Offset tasks and history panels relative to their header icons */
+.settings-panel,
 .tasks-panel,
-.history-panel {
-  right: 4.5rem;
-}
-
-/* Offset audio and statistics panels relative to header icons */
+.history-panel,
 .audio-panel,
 .stats-panel {
-  right: 7rem;
+  right: 1.5rem;
 }
 
 .audio-panel.slideout,
@@ -364,7 +358,9 @@ body {
 }
 
 .pill-btn.main {
+  /* Main pill buttons (audio play/pause) use accent colour and dynamic text colour */
   background: var(--color-accent);
+  color: var(--accent-text);
 }
 
 /* Playback controls row in audio panel */
@@ -372,8 +368,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 1rem;
+  margin: 1.2rem;
 }
 
 /* Stats summary styling */
@@ -387,38 +383,147 @@ body {
 
 /* Quote display styling */
 .quote-display {
-  margin-top: 1rem;
+  margin: 1.5rem;
   padding: 0.75rem 1rem;
-  background: var(--quote-bg);
+  background: rgba(0, 0, 0, 0.4);
   border-radius: var(--border-radius);
   font-style: italic;
   font-size: 0.9rem;
   color: var(--color-secondary);
   max-width: 80%;
   text-align: center;
-
-  /* Make the quote interactive */
-  cursor: pointer;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-/* Button to set the currently visible quote as the daily theme */
-.quote-display .set-theme-btn {
-  position: absolute;
-  top: -0.3rem;
-  right: -0.3rem;
+/* The user’s quote of the day displayed above the timer */
+.theme-quote {
+  margin: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--quote-bg);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--color-primary);
+  max-width: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Star button within quote display for selecting the quote of the day */
+.star-quote-btn {
   background: transparent;
   border: none;
-  color: var(--color-secondary);
+  color: var(--color-accent);
+  font-size: 1.3rem;
   cursor: pointer;
-  font-size: 1rem;
-  padding: 0.15rem;
-  border-radius: var(--border-radius);
+  margin-left: 0.5rem;
   transition: color 0.2s ease;
 }
 
-.quote-display .set-theme-btn:hover {
+.star-quote-btn:hover {
+  color: var(--color-accent-light);
+}
+
+/* Remove button for theme quote */
+.remove-theme-btn {
+  background: transparent;
+  border: none;
   color: var(--color-accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: color 0.2s ease;
+}
+
+.remove-theme-btn:hover {
+  color: var(--color-accent-light);
+}
+
+/* Notification settings: custom times row and chips */
+.notify-options {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.custom-notify-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.custom-notify-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.custom-notify-chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-primary);
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.6rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Hide the current task display since flagged tasks are shown instead */
+.current-task {
+  display: none !important;
+}
+
+/* Custom range styling for the audio progress bar */
+#audio-progress {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 0.35rem;
+  border-radius: 0.5rem;
+  background: var(--color-secondary);
+  background-image: linear-gradient(to right,
+      var(--color-accent) 0%,
+      var(--color-accent) var(--audio-progress-value, 0%),
+      var(--color-secondary) var(--audio-progress-value, 0%),
+      var(--color-secondary) 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  outline: none;
+  cursor: pointer;
+  transition: height 0.2s ease;
+}
+
+#audio-progress:hover {
+  height: 0.5rem;
+}
+
+#audio-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#audio-progress:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+#audio-progress:active::-webkit-slider-thumb {
+  transform: scale(1.3);
 }
 
 /* Ensure slideout animations for tasks/history panels */
@@ -462,8 +567,7 @@ body {
   padding: 0.5rem;
   border-radius: var(--border-radius);
   border: none;
-  background: #374151;
-  color: var(--color-primary);
+  border-color: var(--color-accent);
   font-size: 1rem;
 }
 
@@ -624,7 +728,7 @@ body {
 
 .settings-group label {
   font-size: 0.875rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   color: var(--color-secondary);
 }
 
@@ -636,6 +740,7 @@ body {
   background: var(--input-bg);
   color: var(--input-color);
   font-size: 1rem;
+  margin-bottom: 0.65rem;
 }
 
 /* Apply input background variables to number, color and text inputs within settings groups */
@@ -663,64 +768,6 @@ body {
   flex: 1;
 }
 
-/* Row for two colour inputs (gradient start and end) */
-.color-input-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.color-input-row input[type="color"] {
-  flex: 1;
-  height: 2.2rem;
-  min-width: 0;
-  padding: 0;
-  border-radius: var(--border-radius);
-  border: none;
-  background: var(--input-bg);
-  cursor: pointer;
-}
-
-/* Increase height for all colour inputs in settings to create a larger swatch */
-.settings-group input[type="color"] {
-  height: 2.2rem;
-  padding: 0;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-}
-
-/* Theme quote display styling */
-.theme-quote {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--quote-bg);
-  border-radius: var(--border-radius);
-  font-style: italic;
-  font-size: 0.9rem;
-  color: var(--color-secondary);
-  max-width: 80%;
-  text-align: center;
-}
-
-.theme-quote .remove-theme-quote {
-  background: transparent;
-  border: none;
-  color: var(--color-secondary);
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--border-radius);
-  transition: color 0.2s ease;
-}
-
-.theme-quote .remove-theme-quote:hover {
-  color: var(--color-danger);
-}
-
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .timer-display {
@@ -739,4 +786,192 @@ body {
   .settings-panel {
     padding: 1rem;
   }
+}
+
+/* ===================================================================== */
+/* Additional customisations added for improved UI (July 2025) */
+
+/* Hide the Pomodoro title for a cleaner appearance */
+.app-title {
+  display: none;
+}
+
+/* Rows within settings panel for grouping related inputs */
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.settings-row .settings-group {
+  flex: 1 1 0;
+  min-width: 4rem;
+}
+
+/* Colour input row for gradient pickers */
+.color-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Toggle button styling for dark/light mode */
+.toggle-button {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background: var(--color-accent);
+  color: var(--accent-text, #fff);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.toggle-button:hover {
+  filter: brightness(1.1);
+}
+
+/* Broader time adjust buttons spanning timer width */
+.time-adjust-btn {
+  width: 12rem !important;
+  height: 2.5rem !important;
+  border-radius: 0.75rem !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-primary) !important;
+}
+
+.time-adjust-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Add vertical spacing around timer wrapper */
+.timer-wrapper {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Refined control buttons (start/pause/reset etc.) */
+.control-button {
+  padding: 0.6rem 1.3rem;
+  margin: 0.25rem;
+  border-radius: 0.6rem;
+  font-weight: 600;
+  background: var(--color-accent);
+  color: var(--accent-text, #fff);
+  transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
+}
+
+.control-button:hover {
+  transform: translateY(-1px);
+}
+
+/* Actions sections aligned to right with margin */
+.tasks-actions,
+.history-actions,
+.audio-actions,
+.stats-actions,
+.settings-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Panel titles more prominent */
+.panel-title,
+.settings-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* Audio playback pill buttons unified styling */
+.pill-btn {
+  padding: 2rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-primary);
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pill-btn.main {
+  background: var(--color-accent);
+  color: var(--accent-text, #fff);
+}
+
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Volume row spacing */
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Scrollbars and padding for task/history lists */
+.tasks-list,
+.history-list {
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.tasks-list::-webkit-scrollbar,
+.history-list::-webkit-scrollbar {
+  width: 0.4rem;
+}
+
+.tasks-list::-webkit-scrollbar-track,
+.history-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+}
+
+.tasks-list::-webkit-scrollbar-thumb,
+.history-list::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 1rem;
+}
+
+/* Flagged tasks display chips */
+.flagged-tasks-display {
+  margin-top: 1rem;
+  margin-left: 12rem;
+  margin-right: 12rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.flagged-tasks-display .flag-chip {
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Star buttons inside task items */
+.star-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  margin: 0 0.4rem;
+  color: var(--color-accent);
+  transition: color 0.2s ease;
+}
+
+.star-button:hover {
+  color: var(--color-accent-light);
 }

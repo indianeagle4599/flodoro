@@ -8,12 +8,39 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 
+<!-- 🔔 Audio notification chime -->
+<audio id="notification-sound" src="assets/audio/notify.mp3" preload="auto"></audio>
+
+<!-- 💬 Toast container -->
+<div id="toast" class="toast hidden" role="alert"></div>
+
+<style>
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .toast.show {
+    opacity: 1;
+  }
+</style>
+
+
 <body>
   <div id="app" tabindex="0">
     <header class="app-header">
-      <h1 class="app-title">Pomodoro Timer</h1>
-      <!-- Header buttons: settings, tasks and history -->
-      <!-- translucent pill so icons never blend into the background -->
+      <!-- We intentionally omit the Pomodoro Timer heading for a cleaner look -->
+      <!-- Place the header tray on the left for intuitive access -->
       <div class="header-tray">
         <button id="tasks-button" class="icon-button" aria-label="Tasks" title="Tasks">📋</button>
         <button id="history-button" class="icon-button" aria-label="History" title="History">📊</button>
@@ -24,11 +51,10 @@
       </div>
     </header>
     <main class="main-content">
-      <!-- Persistent theme quote display (appears when user sets a theme quote) -->
-      <div id="theme-quote-display" class="theme-quote hidden">
-        <span id="theme-quote-text"></span>
-        <button id="remove-theme-quote" class="icon-button remove-theme-quote" aria-label="Remove theme quote" title="Remove theme quote">✖</button>
-      </div>
+      <!-- User's selected quote of the day (if any) -->
+      <div id="theme-quote-display" class="theme-quote hidden"></div>
+      <!-- Motivational quote display shown during breaks; clicking cycles through quotes and a star button allows favouriting -->
+      <div id="quote-display" class="quote-display hidden" role="button" aria-label="Break quote"></div>
       <!-- Mode toggle: click to switch between work and break sessions -->
       <div id="mode-toggle" class="mode-toggle" role="button" tabindex="0" aria-label="Toggle work/break">
         <span id="mode-main" class="mode-main">Work</span>
@@ -42,74 +68,78 @@
         <button id="subtract-minute" class="icon-button time-adjust-btn" aria-label="Remove one minute">−</button>
       </div>
       <div id="controls" class="controls">
-        <button id="start-button" class="control-button">Start</button>
-        <button id="reset-button" class="control-button">Reset</button>
+        <button id="start-button" class="control-button" aria-label="Start / Pause" title="Start / Pause">▶</button>
+        <button id="reset-button" class="control-button" aria-label="Reset" title="Reset">⟳</button>
         <button id="postpone-button" class="control-button hidden">Postpone Break</button>
-      </div>
-
-      <!-- Secondary controls: audio quick toggle -->
-      <div id="secondary-controls" class="secondary-controls">
-        <button id="audio-toggle" class="icon-button" aria-label="Toggle audio">🔈</button>
       </div>
 
       <!-- Display the current task (if task manager is enabled) -->
       <div id="current-task" class="current-task hidden"></div>
 
-      <!-- Motivational quote display shown during breaks -->
-      <div id="quote-display" class="quote-display hidden"></div>
+      <!-- Display flagged (starred) tasks prominently -->
+      <div id="flagged-tasks-display" class="flagged-tasks-display hidden"></div>
     </main>
     <!-- Settings panel: slides out from the top right under the settings button. Hides when not active. -->
     <div id="settings-panel" class="settings-panel slideout hidden" role="dialog" aria-modal="true"
       aria-labelledby="settings-title">
       <h2 id="settings-title" class="settings-title">Settings</h2>
       <div class="settings-content">
-        <!-- Duration settings -->
-        <div class="settings-group">
-          <label for="work-duration">Work (min)</label>
-          <input type="number" id="work-duration" min="1" value="25" />
-        </div>
-        <div class="settings-group">
-          <label for="short-break-duration">Short break (min)</label>
-          <input type="number" id="short-break-duration" min="1" value="5" />
-        </div>
-        <div class="settings-group">
-          <label for="long-break-duration">Long break (min)</label>
-          <input type="number" id="long-break-duration" min="1" value="15" />
-        </div>
-        <div class="settings-group">
-          <label for="sessions-before-long">Pomodoros before long break</label>
-          <input type="number" id="sessions-before-long" min="1" value="4" />
-        </div>
-        <!-- Background gradient colours displayed side‑by‑side -->
-        <div class="settings-group">
-          <label>Background gradient</label>
-          <div class="color-input-row">
-            <input type="color" id="bg-color1" value="#3358a2" />
-            <input type="color" id="bg-color2" value="#8f5bbb" />
+        <!-- Duration settings grouped into two rows for cleaner layout -->
+        <div class="settings-row">
+          <div class="settings-group">
+            <label for="work-duration">Work&nbsp;(min)</label>
+            <input type="number" id="work-duration" min="1" value="25" />
+          </div>
+          <div class="settings-group">
+            <label for="short-break-duration">Short&nbsp;break&nbsp;(min)</label>
+            <input type="number" id="short-break-duration" min="1" value="5" />
           </div>
         </div>
-        <!-- Accent colour picker for fine tuning the accent hue -->
-        <div class="settings-group">
-          <label for="color-picker">Accent colour</label>
-          <input type="color" id="color-picker" value="#3b82f6" />
+        <div class="settings-row">
+          <div class="settings-group">
+            <label for="long-break-duration">Long&nbsp;break&nbsp;(min)</label>
+            <input type="number" id="long-break-duration" min="1" value="15" />
+          </div>
+          <div class="settings-group">
+            <label for="sessions-before-long">Pomodoros&nbsp;before&nbsp;long&nbsp;break</label>
+            <input type="number" id="sessions-before-long" min="1" value="4" />
+          </div>
         </div>
-        <!-- Theme preset selection -->
+        <!-- Colour settings: gradient, accent and colour mode toggle in one row -->
+        <div class="settings-row">
+          <div class="settings-group">
+            <label>Gradient</label>
+            <div class="color-input-row">
+              <input type="color" id="bg-color1" value="#3358a2" />
+              <input type="color" id="bg-color2" value="#8f5bbb" />
+            </div>
+          </div>
+          <div class="settings-group">
+            <label for="color-picker">Accent</label>
+            <input type="color" id="color-picker" value="#3b82f6" />
+          </div>
+          <div class="settings-group">
+            <label for="color-mode-toggle">Mode</label>
+            <button id="color-mode-toggle" class="toggle-button" aria-label="Toggle colour mode">Dark&nbsp;Mode</button>
+          </div>
+        </div>
+        <!-- Theme preset selection (always below custom colour choices) -->
         <div class="settings-group">
-          <label for="theme-preset-select">Theme preset</label>
+          <label for="theme-preset-select">Theme&nbsp;preset</label>
           <select id="theme-preset-select">
             <option value="custom">Custom</option>
-            <option value="apple-blue">Apple Blue</option>
-            <option value="apple-green">Apple Green</option>
-            <option value="apple-pink">Apple Pink</option>
+            <option value="apple-blue">Apple&nbsp;Blue</option>
+            <option value="apple-green">Apple&nbsp;Green</option>
+            <option value="apple-pink">Apple&nbsp;Pink</option>
+            <option value="apple-steel">Apple&nbsp;Steel</option>
+            <option value="apple-white">Apple&nbsp;White</option>
+            <option value="apple-silver">Apple&nbsp;Silver</option>
+            <option value="apple-golden">Apple&nbsp;Golden</option>
           </select>
         </div>
-        <!-- Dark mode toggle -->
-        <div class="settings-group">
-          <label for="dark-mode-toggle">Dark mode</label>
-          <input type="checkbox" id="dark-mode-toggle" />
-        </div>
-        <!-- Task manager -->
-        <!-- Task manager input removed; tasks are managed via tasks panel -->
+        <!-- Notification settings placeholder; injected via JS -->
+        <div id="notification-settings-container"></div>
+        <!-- Settings actions -->
         <div class="settings-actions">
           <button id="save-settings" class="control-button">Save</button>
           <button id="close-settings" class="control-button">Close</button>
@@ -150,16 +180,12 @@
       <div class="audio-content">
         <!-- Genre selection -->
         <div class="settings-group">
-          <label for="audio-genre-select">Audio genre</label>
-          <select id="audio-genre-select">
-            <option value="focus">Focus</option>
-            <option value="minecraft">Minecraft</option>
-            <option value="jazz">Jazz Club</option>
-            <option value="country">Country Club</option>
-            <option value="library">Library</option>
-            <option value="cafe">Café</option>
-            <option value="deep">Deep Work</option>
-          </select>
+          <!-- Genre selection -->
+          <div class="settings-group">
+            <label for="audio-genre-select">Audio Playlist</label>
+            <select id="audio-genre-select"><!-- options injected by JS --></select>
+          </div>
+
         </div>
         <!-- Track selection within genre -->
         <div class="settings-group">
@@ -172,7 +198,7 @@
         <!-- Playback controls – circular pill buttons -->
         <div class="audio-playback-row">
           <button id="prev-track" class="pill-btn" aria-label="Previous">⏮</button>
-          <button id="audio-play-pause" class="pill-btn main" aria-label="Play / pause">▶️</button>
+          <button id="audio-play-pause" class="pill-btn" aria-label="Play / pause">▶</button>
           <button id="next-track" class="pill-btn" aria-label="Next">⏭</button>
         </div>
         <!-- Volume and mute -->
@@ -203,6 +229,7 @@
     </div>
   </div>
   <audio id="audio-player" preload="auto"></audio>
+  <script src="audioManifest.js"></script>
   <script src="app.js"></script>
 </body>
 

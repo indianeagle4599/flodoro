@@ -17,27 +17,26 @@
 
   // Default durations in seconds
   const DEFAULTS = {
+    // Durations (seconds)
     workDuration: 25 * 60,
     shortBreakDuration: 5 * 60,
     longBreakDuration: 15 * 60,
     sessionsBeforeLong: 4,
-    // Background colours for dynamic gradient
+
+    // Background gradient base colours
     bgColor1: '#3358a2',
     bgColor2: '#8f5bbb',
-    // Audio preferences
-    audioGenre: 'focus',
-    audioTrack: 'none',
+
+    // Audio
+    audioGenre: 'none',   // initial genre visible in the selector
+    audioTrack: 'none',   // initial track
     volume: 0.5,
-    // Theme preferences
-    darkMode: false,
+
+    // Theme
+    darkMode: true,
     themePreset: 'custom'
-    ,
-    // Dynamic gradient base colours
-    bgColor1: '#3358a2',
-    bgColor2: '#8f5bbb',
-    // Audio genre preset
-    audioGenre: 'focus'
   };
+
 
   // State variables
   let workDuration = DEFAULTS.workDuration;
@@ -51,12 +50,24 @@
   let isRunning = false;
   let postponeUsed = false;
 
+  // Track dark mode state (true = dark, false = light)
+  let darkMode = DEFAULTS.darkMode;
+
   // Background gradient colours (hex strings)
   let bgColor1 = DEFAULTS.bgColor1;
   let bgColor2 = DEFAULTS.bgColor2;
 
   // Audio genre (category)
   let audioGenre = DEFAULTS.audioGenre;
+
+  // Notification settings: minutes before session end (e.g. [1,5]) and whether to notify at completion.
+  // Defaults: notify 1 minute and 5 minutes before end, and at completion.
+  let notificationTimes = [1, 5];
+  let notifyEnd = true;
+
+  // Quote system state: index of current break quote and user-selected theme quote.
+  let currentQuoteIndex = 0;
+  let themeQuote = null;
 
 
   // DOM elements
@@ -120,6 +131,10 @@
   const clearHistoryEl = document.getElementById('clear-history');
   const closeHistoryEl = document.getElementById('close-history');
 
+  // New elements: colour mode toggle and flagged tasks display
+  const colorModeToggleEl = document.getElementById('color-mode-toggle');
+  const flaggedTasksDisplayEl = document.getElementById('flagged-tasks-display');
+
   // Additional panels and controls
   const audioSettingsButtonEl = document.getElementById('audio-settings-button');
   const audioPanelEl = document.getElementById('audio-panel');
@@ -129,10 +144,51 @@
   const closeStatsEl = document.getElementById('close-stats');
   const statsSummaryEl = document.getElementById('stats-summary');
   const quoteDisplayEl = document.getElementById('quote-display');
-  // Elements for persistent theme quote display
+
+  // Element for displaying the user's theme quote (quote of the day)
   const themeQuoteDisplayEl = document.getElementById('theme-quote-display');
-  const themeQuoteTextEl = document.getElementById('theme-quote-text');
-  const removeThemeQuoteEl = document.getElementById('remove-theme-quote');
+  // Container where notification settings UI will be injected
+  const notificationSettingsContainerEl = document.getElementById('notification-settings-container');
+
+  /* ---------------------------------------------------------------------------
+ * CENTRAL PANEL MANAGER – one source of truth for open/close behaviour
+ * ------------------------------------------------------------------------- */
+  const PANELS = new Map([
+    ['settings', settingsPanelEl],
+    ['tasks', tasksPanelEl],
+    ['history', historyPanelEl],
+    ['audio', audioPanelEl],
+    ['stats', statsPanelEl],
+  ]);
+
+  function showPanel(key) {
+    const el = PANELS.get(key);
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.classList.add('slideout');
+  }
+
+  function hidePanel(key) {
+    const el = PANELS.get(key);
+    if (!el) return;
+    el.classList.add('hidden');
+    el.classList.remove('slideout');
+  }
+
+  function togglePanel(key) {
+    const el = PANELS.get(key);
+    if (!el) return;
+
+    const willShow = el.classList.contains('hidden');
+
+    // close everything first
+    PANELS.forEach((_, k) => hidePanel(k));
+
+    // then either show or leave hidden (so a second click still closes)
+    if (willShow) showPanel(key);
+  }
+
+
 
   // Motivational quotes for breaks
   const quotes = [
@@ -143,15 +199,12 @@
     "Great things are done by a series of small things brought together."
   ];
 
-  // Index of currently displayed quote
-  let currentQuoteIndex = 0;
-  // Theme quote saved by user (null if not set)
-  let themeQuote = null;
-
   // Task management state
-  // Tasks are stored as objects { text: string, done: boolean }
+  // Tasks are stored as objects { text: string, done: boolean, starred: boolean }
   let tasks = [];
   let currentTaskIndex = 0;
+  // Index of the task currently being dragged (for reorder)
+  let draggedTaskIndex = null;
 
   // Utility: record task events into history with action and text
   function recordTaskEvent(action, text) {
@@ -174,11 +227,9 @@
    */
   function showRandomQuote() {
     if (!quoteDisplayEl) return;
-    // Pick a random quote and set the current index
+    // Choose a random quote index and render it with star button and cycling behaviour
     currentQuoteIndex = Math.floor(Math.random() * quotes.length);
-    const quote = quotes[currentQuoteIndex];
-    updateQuoteDisplay(quote);
-    quoteDisplayEl.classList.remove('hidden');
+    updateQuoteDisplay();
   }
 
   /**
@@ -189,125 +240,23 @@
     quoteDisplayEl.classList.add('hidden');
   }
 
-  /**
-   * Update the quote display element with the given quote. This function
-   * inserts the quote text into the display along with a small button
-   * that allows the user to set the quote as their daily theme. It
-   * attaches an event listener to the button and ensures clicking the
-   * button does not trigger cycling to the next quote.
-   *
-   * @param {string} quote The motivational quote to display.
-   */
-  function updateQuoteDisplay(quote) {
-    if (!quoteDisplayEl) return;
-    // Build HTML with quote text and set‑theme button
-    // Use a black star (★) instead of an emoji so CSS colour can be applied
-    quoteDisplayEl.innerHTML = `<span class="quote-text">${quote}</span>` +
-      `<button class="set-theme-btn" title="Set as daily theme">★</button>`;
-    // Attach click handler to set theme button
-    const setBtn = quoteDisplayEl.querySelector('.set-theme-btn');
-    if (setBtn) {
-      setBtn.addEventListener('click', (e) => {
-        // Prevent bubbling so clicking star doesn't cycle the quote
-        e.stopPropagation();
-        setThemeQuote(quote);
-      });
+  // --- Audio playback state ------------------------------------
+  let audioIsPlaying = false;          // true  ==> user wants music playing
+  function refreshAudioIcons() {
+    if (audioPlayPauseEl) {
+      audioPlayPauseEl.textContent = audioIsPlaying ? '⏸' : '▶';
     }
-  }
-
-  /**
-   * Cycle to the next quote in the list. Called when the user clicks
-   * anywhere on the quote display (excluding the set‑theme button). It
-   * updates the index and re‑renders the quote display.
-   */
-  function cycleQuote() {
-    currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
-    const nextQuote = quotes[currentQuoteIndex];
-    updateQuoteDisplay(nextQuote);
-  }
-
-  /**
-   * Set the given quote as the persistent daily theme. This stores the
-   * theme in localStorage and updates the theme quote display below the
-   * header. Calling this function automatically shows the theme quote.
-   *
-   * @param {string} quote The quote to set as the theme of the day.
-   */
-  function setThemeQuote(quote) {
-    themeQuote = quote;
-    try {
-      localStorage.setItem('pomodoroThemeQuote', quote);
-    } catch (e) {
-      console.warn('Failed to save theme quote:', e);
-    }
-    updateThemeQuoteDisplay();
-  }
-
-  /**
-   * Remove the currently set theme quote. Clears localStorage and hides
-   * the theme quote display area.
-   */
-  function removeThemeQuote() {
-    themeQuote = null;
-    try {
-      localStorage.removeItem('pomodoroThemeQuote');
-    } catch (e) {
-      console.warn('Failed to remove theme quote:', e);
-    }
-    updateThemeQuoteDisplay();
-  }
-
-  /**
-   * Update the persistent theme quote display. If a theme quote is set,
-   * display it in the dedicated area with a remove button; otherwise hide
-   * the entire element.
-   */
-  function updateThemeQuoteDisplay() {
-    if (!themeQuoteDisplayEl || !themeQuoteTextEl) return;
-    if (themeQuote) {
-      themeQuoteTextEl.textContent = themeQuote;
-      themeQuoteDisplayEl.classList.remove('hidden');
-    } else {
-      themeQuoteDisplayEl.classList.add('hidden');
+    if (audioToggleEl) {
+      // loud‐speaker glyph if file is loaded *and* playing
+      audioToggleEl.textContent = (audioPlayerEl.src && audioIsPlaying) ? '🔈' : '🔇';
     }
   }
 
   // Map audio track identifiers to actual URLs (local or remote)
-  const audioSources = {
-    track1: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    track2: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
-  };
-
-  /**
-   * Audio library mapping genres to available tracks. Each entry is an
-   * array of objects with an `id` (used in audioSources) and a human
-   * friendly `name`. Additional audio files can be added to the
-   * corresponding folders under assets/audio and referenced here.
-   */
-  const audioLibrary = {
-    focus: [
-      { id: 'track1', name: 'Focus Track 1' },
-      { id: 'track2', name: 'Focus Track 2' }
-    ],
-    minecraft: [
-      { id: 'track1', name: 'Minecraft Ambience' }
-    ],
-    jazz: [
-      { id: 'track2', name: 'Jazz Club' }
-    ],
-    country: [
-      { id: 'track1', name: 'Country Club' }
-    ],
-    library: [
-      { id: 'track2', name: 'Library' }
-    ],
-    cafe: [
-      { id: 'track1', name: 'Café' }
-    ],
-    deep: [
-      { id: 'track2', name: 'Deep Work' }
-    ]
-  };
+  const audioSources = audioManifest?.audioSources ?? {};
+  const audioLibrary = audioManifest?.audioLibrary ?? {};
+  console.log('Audio sources and library loaded:', audioSources, audioLibrary);
+  populateGenreSelect();
 
   /**
    * Compute and display statistics summarising completed sessions and task events.
@@ -349,6 +298,16 @@
    * ensures the timer persists user choices across sessions.
    */
   function loadPreferences() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          console.log('Notification permission granted.');
+        } else {
+          console.warn('Notifications will be disabled (permission not granted).');
+        }
+      });
+    }
+
     const stored = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     workDuration = parseInt(stored.workDuration || DEFAULTS.workDuration, 10);
     shortBreakDuration = parseInt(stored.shortBreakDuration || DEFAULTS.shortBreakDuration, 10);
@@ -358,11 +317,18 @@
     const volume = typeof stored.volume === 'number' ? stored.volume : DEFAULTS.volume;
     const baseColor = stored.baseColor || '#3b82f6';
     const themePreset = stored.themePreset || DEFAULTS.themePreset;
-    const darkMode = typeof stored.darkMode === 'boolean' ? stored.darkMode : DEFAULTS.darkMode;
+    darkMode = typeof stored.darkMode === 'boolean' ? stored.darkMode : DEFAULTS.darkMode;
     // Load gradient colours and audio genre
     bgColor1 = stored.bgColor1 || DEFAULTS.bgColor1;
     bgColor2 = stored.bgColor2 || DEFAULTS.bgColor2;
     audioGenre = stored.audioGenre || DEFAULTS.audioGenre;
+
+    // Load notification preferences and theme quote
+    isNotificationActive = false
+    notificationMuted = typeof stored.notificationMuted === 'boolean' ? stored.notificationMuted : true;
+    notificationTimes = Array.isArray(stored.notificationTimes) ? stored.notificationTimes.slice() : [1, 5];
+    notifyEnd = typeof stored.notifyEnd === 'boolean' ? stored.notifyEnd : true;
+    themeQuote = localStorage.getItem('pomodoroThemeQuote') || null;
     // Tasks are loaded separately via loadTasks()
     currentTaskIndex = 0;
 
@@ -374,19 +340,21 @@
     if (audioSelectEl) audioSelectEl.value = audioTrack;
     if (volumeSliderEl) volumeSliderEl.value = volume;
     if (colorPickerEl) colorPickerEl.value = baseColor;
-    if (darkModeToggleEl) darkModeToggleEl.checked = darkMode;
+    // Update colour mode toggle button label
+    updateColorModeButton();
     if (themePresetSelectEl) themePresetSelectEl.value = themePreset;
     if (bgColor1El) bgColor1El.value = bgColor1;
     if (bgColor2El) bgColor2El.value = bgColor2;
     if (audioGenreSelectEl) audioGenreSelectEl.value = audioGenre;
 
-    applyAudioTrack(audioTrack);
+    // applyAudioTrack(audioTrack);
     audioPlayerEl.volume = volume;
 
     // Apply theme preset first (which may override base colour) and then the chosen colour.
     applyThemePreset(themePreset);
     applyThemeColor(colorPickerEl.value);
     applyDarkMode(darkMode);
+    updateColorModeButton();
     // Apply background gradient based on stored colours
     applyBackgroundGradient();
     // Populate audio select options for stored genre
@@ -403,6 +371,11 @@
 
     // Update statistics summary after loading history
     updateStatsSummary();
+
+    // Initialise notification settings UI and update to reflect loaded preferences
+    initNotificationSettingsUI();
+    // Show theme quote if one has been selected previously
+    updateThemeQuoteDisplay();
   }
 
   /*
@@ -419,7 +392,8 @@
     const volume = parseFloat(volumeSliderEl.value);
     const baseColor = colorPickerEl.value;
     const themePreset = themePresetSelectEl ? themePresetSelectEl.value : 'custom';
-    const darkMode = darkModeToggleEl && darkModeToggleEl.checked;
+    // Use current darkMode state rather than reading from a checkbox
+    const darkModePref = darkMode;
     // Read background colours and audio genre selections
     const bg1 = bgColor1El ? bgColor1El.value : DEFAULTS.bgColor1;
     const bg2 = bgColor2El ? bgColor2El.value : DEFAULTS.bgColor2;
@@ -436,16 +410,24 @@
       audioTrack,
       volume,
       baseColor,
-      darkMode,
+      darkMode: darkModePref,
       themePreset,
       bgColor1: bg1,
       bgColor2: bg2,
-      audioGenre: genreSel
+      audioGenre: genreSel,
+      // Persist notification settings
+      notificationTimes: notificationTimes.slice(),
+      notifyEnd: notifyEnd
     };
     localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
 
-    applyAudioTrack(audioTrack);
+    // Reload only if the track actually changed
+    if (audioPlayerEl.dataset.trackId !== audioTrack) {
+      applyAudioTrack(audioTrack);
+    }
+
     audioPlayerEl.volume = volume;
+
     applyThemeColor(baseColor);
     applyDarkMode(darkMode);
     applyBackgroundGradient();
@@ -458,23 +440,62 @@
 
 
   // Apply the chosen audio track
-  function applyAudioTrack(track) {
-    if (track === 'none') {
-      audioPlayerEl.pause();
-      audioPlayerEl.removeAttribute('src');
-      // Hide progress when no audio
-      if (audioProgressGroupEl) audioProgressGroupEl.classList.add('hidden');
+  function applyAudioTrack(trackId) {
+    // Always clear any previous src first
+    audioPlayerEl.pause();
+    audioPlayerEl.removeAttribute('src');
+
+    // Hide progress bar by default
+    if (audioProgressGroupEl) audioProgressGroupEl.classList.add('hidden');
+
+    if (trackId === 'none') {
+      refreshAudioIcons();
+      return;
+    }
+
+    const src = audioSources[trackId];
+    if (!src) {
+      console.warn('No audio source for', trackId);
+      refreshAudioIcons();
+      return;
+    }
+
+    /* load the file only when we switch to a different track */
+    if (audioPlayerEl.src !== src) {
+      audioPlayerEl.src = src;
+      audioPlayerEl.currentTime = 0;            // go to the start
+      /* do **not** call .load() — it can truncate long, VBR MP3s */
+    }
+
+    if (audioProgressGroupEl) audioProgressGroupEl.classList.remove('hidden');
+
+    // Honour the last user intention
+    if (audioIsPlaying) {
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
+    }
+
+    refreshAudioIcons();
+    audioPlayerEl.dataset.trackId = trackId;
+  }
+
+  function duckMusic(enable) {
+    if (!audioPlayerEl) return;
+
+    if (enable) {
+      // already ducked? do nothing
+      if (audioPlayerEl.dataset.ducked) return;
+      audioPlayerEl.dataset.ducked = '1';
+      audioPlayerEl.dataset.prevVol = audioPlayerEl.volume;
+      audioPlayerEl.volume = audioPlayerEl.volume * 0.1;
     } else {
-      const src = audioSources[track];
-      if (src) {
-        audioPlayerEl.src = src;
-        audioPlayerEl.loop = true;
-        // Preload may be blocked by browser until user interaction
-        audioPlayerEl.load();
-        if (audioProgressGroupEl) audioProgressGroupEl.classList.remove('hidden');
-      }
+      if (!audioPlayerEl.dataset.ducked) return;   // nothing to restore
+      const prev = parseFloat(audioPlayerEl.dataset.prevVol);
+      audioPlayerEl.volume = isNaN(prev) ? audioPlayerEl.volume : prev;
+      delete audioPlayerEl.dataset.prevVol;
+      delete audioPlayerEl.dataset.ducked;
     }
   }
+
 
   // Format seconds into MM:SS string
   function formatTime(seconds) {
@@ -546,6 +567,23 @@
     root.style.setProperty('--color-accent', hex);
     root.style.setProperty('--color-accent-light', lighter);
     root.style.setProperty('--color-accent-dark', darker);
+    // Update accent text colour for contrast
+    const accentText = getContrastYIQ(hex);
+    root.style.setProperty('--accent-text', accentText);
+  }
+
+  /**
+   * Calculate a high‑contrast text colour (white or black) based on
+   * the given hex colour using the YIQ algorithm. Returns '#fff' for
+   * dark backgrounds and '#000' for light backgrounds.
+   */
+  function getContrastYIQ(hex) {
+    if (!hex || hex.length < 7) return '#fff';
+    const r = parseInt(hex.substr(1, 2), 16);
+    const g = parseInt(hex.substr(3, 2), 16);
+    const b = parseInt(hex.substr(5, 2), 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 140 ? '#000' : '#fff';
   }
 
   /**
@@ -558,25 +596,296 @@
    */
   function applyThemePreset(preset) {
     let colour;
+    // Also update gradient colours for each preset
+    let grad1;
+    let grad2;
     switch (preset) {
       case 'apple-blue':
-        colour = '#007AFF';
+        colour = '#0A84FF';
+        grad1 = '#3358a2';
+        grad2 = '#1E40AF';
         break;
       case 'apple-green':
-        colour = '#34C759';
+        colour = '#30D158';
+        grad1 = '#2BA552';
+        grad2 = '#14532D';
         break;
       case 'apple-pink':
-        colour = '#FF2D55';
+        colour = '#FF375F';
+        grad1 = '#BE185D';
+        grad2 = '#881337';
+        break;
+      case 'apple-steel':
+        colour = '#6B7280';
+        grad1 = '#4B5563';
+        grad2 = '#1F2937';
+        break;
+      case 'apple-white':
+        // A light neutral palette
+        colour = '#D1D1D6';
+        grad1 = '#E5E5EA';
+        grad2 = '#F2F2F7';
+        break;
+      case 'apple-silver':
+        colour = '#C0C0C7';
+        grad1 = '#D2D2D7';
+        grad2 = '#8E8E94';
+        break;
+      case 'apple-golden':
+        colour = '#D4AF37';
+        grad1 = '#F7D06C';
+        grad2 = '#B8860B';
         break;
       default:
-        // Custom: do not change the colour
+        // Custom: do not change the colour or gradient
         return;
     }
-    // Update the colour picker and apply new colour
-    if (colorPickerEl) {
-      colorPickerEl.value = colour;
-    }
+    // Update pickers
+    if (colorPickerEl) colorPickerEl.value = colour;
+    if (bgColor1El) bgColor1El.value = grad1;
+    if (bgColor2El) bgColor2El.value = grad2;
+    // Update internal variables for gradient
+    bgColor1 = grad1;
+    bgColor2 = grad2;
     applyThemeColor(colour);
+    applyBackgroundGradient();
+  }
+
+  /*
+   * ----------------------------------------------------------------------
+   * Quote of the day functionality
+   *
+   * Display a random quote during breaks, allow cycling through quotes by
+   * clicking on the quote, and allow the user to mark a quote as their
+   * favourite "quote of the day" via a star button. The selected theme
+   * quote is shown above the timer until removed by the user. The theme
+   * quote persists across sessions via localStorage.
+   */
+  function updateQuoteDisplay() {
+    if (!quoteDisplayEl) return;
+    // Constrain index
+    if (currentQuoteIndex < 0 || currentQuoteIndex >= quotes.length) {
+      currentQuoteIndex = 0;
+    }
+    const quote = quotes[currentQuoteIndex];
+    const starred = themeQuote === quote;
+    // Build HTML: quote text and star button
+    quoteDisplayEl.innerHTML = `<span class="quote-text">${quote}</span><button id="quote-star-btn" class="star-quote-btn" title="Set as quote of the day">${starred ? '★' : '☆'}</button>`;
+    quoteDisplayEl.classList.remove('hidden');
+    // Clicking the quote cycles to next
+    quoteDisplayEl.onclick = () => {
+      cycleQuote();
+    };
+    // Star button toggles theme quote
+    const starBtn = document.getElementById('quote-star-btn');
+    if (starBtn) {
+      starBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (themeQuote === quote) {
+          themeQuote = null;
+        } else {
+          themeQuote = quote;
+        }
+        persistThemeQuote();
+        updateThemeQuoteDisplay();
+        updateQuoteDisplay();
+      });
+    }
+  }
+
+  function cycleQuote() {
+    currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+    updateQuoteDisplay();
+  }
+
+  function persistThemeQuote() {
+    if (themeQuote) {
+      localStorage.setItem('pomodoroThemeQuote', themeQuote);
+    } else {
+      localStorage.removeItem('pomodoroThemeQuote');
+    }
+  }
+
+  function updateThemeQuoteDisplay() {
+    if (!themeQuoteDisplayEl) return;
+    if (themeQuote) {
+      themeQuoteDisplayEl.innerHTML = `<span class="theme-quote-text">${themeQuote}</span><button id="remove-theme-quote" class="remove-theme-btn" title="Remove quote of the day">✕</button>`;
+      themeQuoteDisplayEl.classList.remove('hidden');
+      const removeBtn = document.getElementById('remove-theme-quote');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          themeQuote = null;
+          persistThemeQuote();
+          updateThemeQuoteDisplay();
+          updateQuoteDisplay();
+        });
+      }
+    } else {
+      themeQuoteDisplayEl.classList.add('hidden');
+      themeQuoteDisplayEl.innerHTML = '';
+    }
+  }
+
+  /*
+   * ----------------------------------------------------------------------
+   * Notification settings and scheduling
+   *
+   * Build the notification settings UI, manage user-selected notification
+   * times, persist them and schedule notifications relative to session
+   * completion. Notifications are cleared when the timer is paused or
+   * reset and rescheduled when resumed.
+   */
+  let notificationUIElements = null;
+
+  function initNotificationSettingsUI() {
+    if (!notificationSettingsContainerEl) return;
+    notificationSettingsContainerEl.innerHTML = '';
+    const group = document.createElement('div');
+    group.className = 'settings-group';
+    const label = document.createElement('label');
+    label.textContent = 'Notifications';
+    const masterNotifyCheckbox = document.createElement('input');
+    masterNotifyCheckbox.type = 'checkbox';
+    masterNotifyCheckbox.id = 'notifications-enabled-checkbox';
+    masterNotifyCheckbox.style.marginLeft = "8px";
+    masterNotifyCheckbox.checked = !notificationMuted;
+    label.appendChild(masterNotifyCheckbox);
+    group.appendChild(label);
+    const optionsRow = document.createElement('div');
+    optionsRow.className = 'notify-options';
+    // 1 minute checkbox
+    const oneMinLabel = document.createElement('label');
+    const oneMinCheckbox = document.createElement('input');
+    oneMinCheckbox.type = 'checkbox';
+    oneMinCheckbox.id = 'notify-1min';
+    oneMinLabel.appendChild(oneMinCheckbox);
+    oneMinLabel.appendChild(document.createTextNode('1 minute'));
+    optionsRow.appendChild(oneMinLabel);
+    // 5 minutes checkbox
+    const fiveMinLabel = document.createElement('label');
+    const fiveMinCheckbox = document.createElement('input');
+    fiveMinCheckbox.type = 'checkbox';
+    fiveMinCheckbox.id = 'notify-5min';
+    fiveMinLabel.appendChild(fiveMinCheckbox);
+    fiveMinLabel.appendChild(document.createTextNode('5 minutes'));
+    optionsRow.appendChild(fiveMinLabel);
+    // Completion checkbox
+    const endLabel = document.createElement('label');
+    const endCheckbox = document.createElement('input');
+    endCheckbox.type = 'checkbox';
+    endCheckbox.id = 'notify-end';
+    endLabel.appendChild(endCheckbox);
+    endLabel.appendChild(document.createTextNode('Completion'));
+    optionsRow.appendChild(endLabel);
+    group.appendChild(optionsRow);
+    // Custom input row
+    const customRow = document.createElement('div');
+    customRow.className = 'custom-notify-row';
+    const customInput = document.createElement('input');
+    customInput.type = 'number';
+    customInput.min = '1';
+    customInput.placeholder = 'Minutes before end';
+    customInput.id = 'custom-notify-input';
+    const addCustomBtn = document.createElement('button');
+    addCustomBtn.className = 'control-button';
+    addCustomBtn.textContent = 'Add';
+    addCustomBtn.title = 'Add custom notification';
+    customRow.appendChild(customInput);
+    customRow.appendChild(addCustomBtn);
+    group.appendChild(customRow);
+    const customList = document.createElement('div');
+    customList.id = 'custom-notify-list';
+    customList.className = 'custom-notify-list';
+    group.appendChild(customList);
+    notificationSettingsContainerEl.appendChild(group);
+    // Handler to add a custom time
+    function addCustomTime() {
+      const val = parseInt(customInput.value, 10);
+      if (!isNaN(val) && val > 0 && !notificationTimes.includes(val)) {
+        notificationTimes.push(val);
+        persistNotificationSettings();
+        updateNotificationUI();
+      }
+      customInput.value = '';
+    }
+    // Event listeners
+    masterNotifyCheckbox.addEventListener('change', () => {
+      notificationMuted = !masterNotifyCheckbox.checked; // true = muted
+      persistNotificationSettings(); // Persist your updated settings
+      updateNotificationUI();    // Optionally refresh parts of the UI
+    });
+    oneMinCheckbox.addEventListener('change', () => {
+      toggleNotifyTime(1, oneMinCheckbox.checked);
+    });
+    fiveMinCheckbox.addEventListener('change', () => {
+      toggleNotifyTime(5, fiveMinCheckbox.checked);
+    });
+    endCheckbox.addEventListener('change', () => {
+      notifyEnd = endCheckbox.checked;
+      persistNotificationSettings();
+    });
+    addCustomBtn.addEventListener('click', addCustomTime);
+    customInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addCustomTime();
+      }
+    });
+    notificationUIElements = {
+      masterNotifyCheckbox,
+      oneMinCheckbox,
+      fiveMinCheckbox,
+      endCheckbox,
+      customList
+    };
+    updateNotificationUI();
+  }
+
+  function toggleNotifyTime(minutes, enabled) {
+    if (enabled) {
+      if (!notificationTimes.includes(minutes)) {
+        notificationTimes.push(minutes);
+      }
+    } else {
+      notificationTimes = notificationTimes.filter((t) => t !== minutes);
+    }
+    persistNotificationSettings();
+    updateNotificationUI();
+  }
+
+  function updateNotificationUI() {
+    if (!notificationUIElements) return;
+    const { oneMinCheckbox, fiveMinCheckbox, endCheckbox, customList } = notificationUIElements;
+    oneMinCheckbox.checked = notificationTimes.includes(1);
+    fiveMinCheckbox.checked = notificationTimes.includes(5);
+    endCheckbox.checked = notifyEnd;
+    const customTimes = notificationTimes.filter((t) => t !== 1 && t !== 5);
+    customList.innerHTML = '';
+    customTimes.sort((a, b) => a - b).forEach((t) => {
+      const chip = document.createElement('span');
+      chip.className = 'custom-notify-chip';
+      chip.textContent = `${t}min`;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-theme-btn';
+      removeBtn.title = 'Remove';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => {
+        notificationTimes = notificationTimes.filter((x) => x !== t);
+        persistNotificationSettings();
+        updateNotificationUI();
+      });
+      chip.appendChild(removeBtn);
+      customList.appendChild(chip);
+    });
+  }
+
+  function persistNotificationSettings() {
+    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+    prefs.notificationMuted = notificationMuted;
+    prefs.notificationTimes = notificationTimes;
+    prefs.notifyEnd = notifyEnd;
+    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
   }
 
   /**
@@ -597,11 +906,6 @@
       // Inputs: dark backgrounds with light text
       root.style.setProperty('--input-bg', '#374151');
       root.style.setProperty('--input-color', '#ffffff');
-      // Dark quote backgrounds should be translucent black
-      root.style.setProperty('--quote-bg', 'rgba(0, 0, 0, 0.4)');
-
-      // Provide a darker tray background for header icons in dark mode
-      root.style.setProperty('--header-tray-bg', 'rgba(0, 0, 0, 0.4)');
     } else {
       // Light mode: invert colours for a brighter interface reminiscent of macOS
       root.style.setProperty('--color-primary', '#1f2937');
@@ -612,14 +916,29 @@
       // Inputs: light backgrounds with dark text
       root.style.setProperty('--input-bg', '#e5e7eb');
       root.style.setProperty('--input-color', '#1f2937');
-      // Light quote backgrounds should be translucent white
-      root.style.setProperty('--quote-bg', 'rgba(255, 255, 255, 0.6)');
-
-      // Provide a light tray background for header icons in light mode
-      root.style.setProperty('--header-tray-bg', 'rgba(255, 255, 255, 0.5)');
     }
     // Update background gradient to match new theme brightness
     applyBackgroundGradient();
+  }
+
+  /**
+   * Update the colour mode button's label to reflect current mode.
+   * In dark mode the button shows "Light Mode" (clicking it will switch to light mode),
+   * and vice versa. This function should be called whenever darkMode changes.
+   */
+  function updateColorModeButton() {
+    if (!colorModeToggleEl) return;
+    colorModeToggleEl.textContent = darkMode ? 'Light Mode' : 'Dark Mode';
+  }
+
+  /**
+   * Toggle between light and dark modes. Updates darkMode state,
+   * applies the theme and updates the button label.
+   */
+  function toggleColorMode() {
+    darkMode = !darkMode;
+    applyDarkMode(darkMode);
+    updateColorModeButton();
   }
 
   /**
@@ -694,14 +1013,46 @@
    */
   function applyBackgroundGradient() {
     // Determine factor based on dark mode: dark mode darkens colours
-    const darkMode = darkModeToggleEl && darkModeToggleEl.checked;
+    // Use global darkMode state instead of reading from checkbox
+    const dark = darkMode;
     // Dark mode: darken colours slightly; Light mode: use original colours
-    const factor = darkMode ? 0.6 : 1.0;
+    const factor = dark ? 0.6 : 1.0;
     const c1 = adjustColour(bgColor1, factor);
     const c2 = adjustColour(bgColor2, factor);
     if (appEl) {
       appEl.style.backgroundImage = `linear-gradient(135deg, ${c1}, ${c2})`;
     }
+  }
+
+  /**
+ * Build the <option> list for #audio-genre-select from AUDIO_LIBRARY keys.
+ * Keeps any previously–saved genre if it still exists; otherwise selects the first key.
+ */
+  function populateGenreSelect() {
+    if (!audioGenreSelectEl) return;
+
+    // Remember what _was_ selected (from preferences or default)
+    const previous = audioGenreSelectEl.value || audioGenre || 'none';
+
+    // Clear existing children
+    audioGenreSelectEl.innerHTML = '';
+
+    // Add one <option> per genre
+    Object.keys(audioLibrary).sort().forEach(key => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = key.replace(/(^|\s)\w/g, c => c.toUpperCase()); // simple prettify
+      audioGenreSelectEl.appendChild(opt);
+    });
+
+    // Pick the remembered genre if still valid, else fall back to the first entry
+    if ([...audioGenreSelectEl.options].some(o => o.value === previous)) {
+      audioGenreSelectEl.value = previous;
+    }
+    audioGenre = audioGenreSelectEl.value;     // keep state in sync
+
+    // Now that we have a valid genre, build the track list
+    updateAudioSelectOptions();
   }
 
   /**
@@ -734,12 +1085,27 @@
     });
     // Select the first track by default if the previous track isn't available
     if (list.length > 0) {
-      audioSelectEl.value = list[0].id;
-      applyAudioTrack(list[0].id);
+      const prevId = audioSelectEl.value;
+      if (list.some(t => t.id === prevId)) {
+        audioSelectEl.value = prevId;
+      } else if (list.length) {
+        audioSelectEl.value = list[0].id;           // fallback only if needed
+      } else {
+        audioSelectEl.value = 'none';
+      }
+
+      // load a new source **only** if it changed
+      if (!audioPlayerEl.src.includes(audioSelectEl.value)) {
+        applyAudioTrack(audioSelectEl.value);
+      }
     } else {
       audioSelectEl.value = 'none';
       applyAudioTrack('none');
     }
+    if (audioIsPlaying && audioPlayerEl.paused) {
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
+    }
+
     // Save genre and track preferences immediately
     const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     prefs.audioGenre = genre;
@@ -754,15 +1120,24 @@
    * remains loaded so that play resumes from the same position.
    */
   function togglePlayPause() {
-    if (!audioPlayerEl || !audioPlayPauseEl) return;
-    if (audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => { });
-      audioPlayPauseEl.textContent = '⏸';
+    if (!audioPlayerEl) return;
+
+    // Flip the intention flag first
+    audioIsPlaying = !audioIsPlaying;
+
+    if (audioIsPlaying) {
+      // If no track loaded yet, choose the current <select> value
+      if (!audioPlayerEl.src && audioSelectEl) {
+        applyAudioTrack(audioSelectEl.value);
+      }
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
     } else {
       audioPlayerEl.pause();
-      audioPlayPauseEl.textContent = '▶️';
     }
+
+    refreshAudioIcons();
   }
+
 
   /**
    * Advance to the previous track within the current genre. If at the
@@ -782,9 +1157,10 @@
     audioSelectEl.value = newTrack.id;
     applyAudioTrack(newTrack.id);
     // Immediately play new track if previously playing
-    if (!audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => { });
+    if (audioIsPlaying) {
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     }
+    refreshAudioIcons();
     // Save preference
     const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     prefs.audioTrack = newTrack.id;
@@ -807,9 +1183,10 @@
     const newTrack = list[newIndex];
     audioSelectEl.value = newTrack.id;
     applyAudioTrack(newTrack.id);
-    if (!audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => { });
+    if (audioIsPlaying) {
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     }
+    refreshAudioIcons();
     const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     prefs.audioTrack = newTrack.id;
     localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
@@ -849,20 +1226,42 @@
     }
   }
 
+  // Show flagged (starred) tasks prominently below the timer
+  function updateFlaggedTasksDisplay() {
+    if (!flaggedTasksDisplayEl) return;
+    // Only display tasks that are starred and not completed
+    const flagged = tasks.filter((t) => t.starred && !t.done);
+    if (flagged.length === 0) {
+      flaggedTasksDisplayEl.innerHTML = '';
+      flaggedTasksDisplayEl.classList.add('hidden');
+      return;
+    }
+    flaggedTasksDisplayEl.classList.remove('hidden');
+    flaggedTasksDisplayEl.innerHTML = '';
+    flagged.forEach((task) => {
+      const chip = document.createElement('div');
+      chip.className = 'flag-chip';
+      chip.textContent = task.text;
+      flaggedTasksDisplayEl.appendChild(chip);
+    });
+  }
+
   // Update audio progress slider
   function updateAudioProgressBar() {
     if (!audioProgressEl || !audioPlayerEl) return;
     if (audioPlayerEl.duration && !isNaN(audioPlayerEl.duration)) {
       const progress = (audioPlayerEl.currentTime / audioPlayerEl.duration) * 100;
       audioProgressEl.value = progress;
+      // Update CSS variable for gradient fill on custom progress bar
+      audioProgressEl.style.setProperty('--audio-progress-value', `${progress}%`);
     }
   }
 
   // Seek audio track to a percentage
   function seekAudio() {
-    if (audioPlayerEl && audioPlayerEl.duration && !isNaN(audioPlayerEl.duration)) {
-      const target = (parseFloat(audioProgressEl.value) / 100) * audioPlayerEl.duration;
-      audioPlayerEl.currentTime = target;
+    if (audioPlayerEl.duration && !isNaN(audioPlayerEl.duration)) {
+      audioPlayerEl.currentTime =
+        (audioProgressEl.value / 100) * audioPlayerEl.duration;
     }
   }
   // Update the timer display and session label
@@ -875,28 +1274,30 @@
   // Start or resume the timer
   function startTimer() {
     if (isRunning) {
-      // Pause
+      // Pause the timer
       clearInterval(timerInterval);
       timerInterval = null;
       isRunning = false;
-      startButtonEl.textContent = 'Resume';
+      // Stop any scheduled notifications
+      // clearScheduledNotifications();
+      // scheduleNotifications();
+      // Set play icon on pause
+      startButtonEl.textContent = '▶';
+      startButtonEl.setAttribute('title', 'Start');
       return;
     }
 
     // Starting or resuming
     isRunning = true;
-    startButtonEl.textContent = 'Pause';
+    // Set pause icon when running
+    startButtonEl.textContent = '⏸';
+    startButtonEl.setAttribute('title', 'Pause');
     // If this is the first time starting this session, set start time and total time
     if (sessionStartTime === null) {
       sessionStartTime = Date.now();
       sessionTotalTime = remainingTime;
     }
-    // If audio is selected and not already playing, start it
-    if (audioPlayerEl.src && audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => {
-        // Autoplay might be blocked until user interacts, ignore
-      });
-    }
+    // Do not automatically start audio when timer starts; user controls audio explicitly
     timerInterval = setInterval(() => {
       remainingTime--;
       updateDisplay();
@@ -906,9 +1307,17 @@
         isRunning = false;
         handleSessionEnd();
       }
-      // Update audio progress each tick
-      updateAudioProgressBar();
+      let mins = remainingTime / 60
+      if (mins in notificationTimes) {
+        sendNotification(
+          `${currentSessionType} ending in ${mins} minute${mins === 1 ? '' : 's'}!`,
+          currentSessionType === SESSION.WORK ? 'Prepare to rest soon.' : 'Get ready to work.'
+        );
+      }
     }, 1000);
+
+    // Schedule notifications for this session
+    // scheduleNotifications();
   }
 
   // Reset timer to initial values based on current preferences
@@ -919,11 +1328,15 @@
     sessionCount = 0;
     currentSessionType = SESSION.WORK;
     remainingTime = workDuration;
-    startButtonEl.textContent = 'Start';
+    startButtonEl.textContent = '▶';
+    startButtonEl.setAttribute('title', 'Start');
     postponeButtonEl.classList.add('hidden');
     postponeUsed = false;
     sessionStartTime = null;
     sessionTotalTime = null;
+    // Clear any scheduled notifications when resetting
+    // clearScheduledNotifications();
+    // scheduleNotifications();
     updateDisplay();
     updateCurrentTaskDisplay();
     hideQuote();
@@ -931,8 +1344,14 @@
 
   // Transition to the next session based on current state
   function handleSessionEnd() {
-    // Send a browser notification if permission granted
-    sendNotification(`${currentSessionType} complete!`, currentSessionType === SESSION.WORK ? 'Time for a break.' : 'Back to work.');
+    // Send a completion notification only if the user has enabled end notifications
+    if (notifyEnd) {
+      sendNotification(
+        `${currentSessionType} complete!`,
+        currentSessionType === SESSION.WORK ? 'Time for a break.' : 'Back to work.',
+        "long"
+      );
+    }
 
     // Record the finished session
     recordSession();
@@ -972,49 +1391,152 @@
     startTimer();
   }
 
-  // Send a notification if allowed
-  function sendNotification(title, body) {
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body });
-    }
+  // Utility to get chime duration reliably, even before metadata is loaded
+  function getChimeDuration(chimeEl) {
+    return new Promise((resolve) => {
+      if (chimeEl.readyState >= 1 && chimeEl.duration && !isNaN(chimeEl.duration)) {
+        resolve(chimeEl.duration);
+      } else {
+        chimeEl.onloadedmetadata = () => resolve(chimeEl.duration || 1);
+      }
+    });
   }
 
-  // Toggle settings panel visibility
-  function openSettings() {
-    // If already open, close it
-    if (!settingsPanelEl.classList.contains('hidden')) {
-      closeSettings();
+  // Modular chime playback
+  function playChime({ notify_type = "short", chimeEl = null, onEnded = () => { } } = {}) {
+    chimeEl = chimeEl || document.getElementById("notification-sound");
+    if (!chimeEl) { onEnded(); return; }
+
+    getChimeDuration(chimeEl).then((total) => {
+      let playDuration = (notify_type === "short") ? total / 2 : total;
+
+      if (notificationMuted) {
+        // If muted, don't play but still respect the timing for toast
+        setTimeout(onEnded, playDuration * 1000);
+        return;
+      }
+
+      duckMusic(true);
+
+      chimeEl.pause();
+      chimeEl.currentTime = 0;
+      let ended = false;
+      function clearUp() {
+        if (ended) return;
+        ended = true;
+        chimeEl.removeEventListener('timeupdate', timeWatcher);
+        chimeEl.removeEventListener('ended', nativeEndedHandler);
+        duckMusic(false);
+        onEnded();
+      }
+
+      function timeWatcher() {
+        if (chimeEl.currentTime >= playDuration) {
+          chimeEl.pause();
+          chimeEl.currentTime = 0;
+          clearUp();
+        }
+      }
+      function nativeEndedHandler() {
+        clearUp();
+      }
+
+      // If playing partial, use timeupdate; if full, let 'ended' trigger cleanup.
+      if (playDuration < total) {
+        chimeEl.addEventListener('timeupdate', timeWatcher);
+      } else {
+        chimeEl.addEventListener('ended', nativeEndedHandler);
+      }
+
+      chimeEl.play()
+        .then(() => {
+          // Would be handled by event handlers above
+        })
+        .catch((e) => {
+          // Clean up anyway if audio blocked
+          console.warn("Audio play blocked:", e);
+          clearUp();
+        });
+    });
+  }
+
+  // Send a notification if no other notification is active
+  function sendNotification(title, body, notify_type = "short") {
+    if (isNotificationActive) {
+      console.warn("Notification ignored - one already running.");
       return;
     }
-    // Close other panels before opening settings
-    closeTasks();
-    closeHistory();
-    closeAudio();
-    closeStats();
-    settingsPanelEl.classList.remove('hidden');
-    settingsPanelEl.classList.add('slideout');
-    // Pause timer when settings open
-    if (isRunning) {
-      startTimer();
-    }
+    isNotificationActive = true;
+
+    const chimeEl = document.getElementById("notification-sound");
+    getChimeDuration(chimeEl).then((total) => {
+      let playDuration = (notify_type === "short") ? total / 2 : total;
+
+      // Play chime and show toast, toast always for playDuration ms
+      playChime({
+        notify_type,
+        chimeEl,
+        onEnded: () => {
+          isNotificationActive = false;
+        }
+      });
+
+      showToast(`${title}: ${body}`, playDuration * 1000);
+
+      // Native notification attempt
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(title, {
+            body: body,
+            icon: "assets/icon.png"
+          });
+        } catch (e) {
+          console.warn("Notification failed:", e);
+          showToast(`${title}: ${body}`, playDuration * 1000);
+        }
+      }
+    });
   }
 
-  function closeSettings() {
-    settingsPanelEl.classList.add('hidden');
-    settingsPanelEl.classList.remove('slideout');
+  // Simple toast as before
+  function showToast(message, duration = 4000) {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("show");
+    toast.classList.remove("hidden");
+    setTimeout(() => {
+      toast.classList.remove("show");
+      toast.classList.add("hidden");
+    }, duration);
   }
+
+
+  // Toggle settings panel visibility
+  function openSettings() { togglePanel('settings'); }
+  function closeSettings() { hidePanel('settings'); }
 
   // Postpone the current break by adding 5 minutes; can be used only once per break
   function postponeBreak() {
+    // Only allow postponing once per break and only during a break
     if (postponeUsed || currentSessionType === SESSION.WORK) return;
+    // Converting break into additional work: switch to work mode and extend timer
+    currentSessionType = SESSION.WORK;
     remainingTime += 5 * 60;
-    postponeUsed = true;
-    postponeButtonEl.classList.add('hidden');
-    updateDisplay();
-    // Adjust total time for history
+    // Extend total time for history recording
     if (sessionTotalTime !== null) {
       sessionTotalTime += 5 * 60;
     }
+    postponeUsed = true;
+    postponeButtonEl.classList.add('hidden');
+    updateDisplay();
+    // Hide break quote as we resumed work
+    hideQuote();
+    // Reschedule notifications for the extended work session
+    // clearScheduledNotifications();
+    // if (isRunning) {
+    //   scheduleNotifications();
+    // }
   }
 
   // Add or subtract minutes from the current remaining time
@@ -1106,9 +1628,13 @@
       const storedTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
       if (Array.isArray(storedTasks)) {
         tasks = storedTasks.map((t) => {
-          if (typeof t === 'string') return { text: t, done: false };
-          // Already an object
-          return { text: t.text || '', done: !!t.done };
+          if (typeof t === 'string') return { text: t, done: false, starred: false };
+          // Already an object; ensure starred property exists
+          return {
+            text: t.text || '',
+            done: !!t.done,
+            starred: !!t.starred
+          };
         });
       } else {
         tasks = [];
@@ -1119,6 +1645,7 @@
     currentTaskIndex = 0;
     updateCurrentTaskDisplay();
     updateTasksList();
+    updateFlaggedTasksDisplay();
   }
 
   // Save tasks to localStorage
@@ -1131,53 +1658,110 @@
     if (!tasksListEl) return;
     // Clear existing list
     tasksListEl.innerHTML = '';
+    // Render each task in its current order (no sorting) and attach drag‑and‑drop handlers
     tasks.forEach((task, index) => {
       const li = document.createElement('li');
+      li.draggable = true;
+      li.dataset.index = index;
+      // Handle drag start
+      li.addEventListener('dragstart', (ev) => {
+        draggedTaskIndex = index;
+        // Indicate move effect
+        if (ev.dataTransfer) {
+          ev.dataTransfer.effectAllowed = 'move';
+        }
+      });
+      // Allow drag over
+      li.addEventListener('dragover', (ev) => {
+        ev.preventDefault();
+        if (ev.dataTransfer) {
+          ev.dataTransfer.dropEffect = 'move';
+        }
+      });
+      // Handle drop to reorder
+      li.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        const dropIndex = parseInt(ev.currentTarget.dataset.index, 10);
+        if (draggedTaskIndex !== null && !isNaN(dropIndex) && draggedTaskIndex !== dropIndex) {
+          // Remove the dragged task and insert at new index
+          const [moved] = tasks.splice(draggedTaskIndex, 1);
+          tasks.splice(dropIndex, 0, moved);
+          // Adjust currentTaskIndex to follow moved task
+          if (draggedTaskIndex === currentTaskIndex) {
+            currentTaskIndex = dropIndex;
+          } else if (draggedTaskIndex < currentTaskIndex && dropIndex >= currentTaskIndex) {
+            currentTaskIndex--;
+          } else if (draggedTaskIndex > currentTaskIndex && dropIndex <= currentTaskIndex) {
+            currentTaskIndex++;
+          }
+          saveTasks();
+          updateTasksList();
+          updateCurrentTaskDisplay();
+          updateFlaggedTasksDisplay();
+        }
+        draggedTaskIndex = null;
+      });
+      li.addEventListener('dragend', () => {
+        draggedTaskIndex = null;
+      });
+      // Checkbox for marking complete
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.checked = task.done;
       checkbox.addEventListener('change', () => {
         const wasDone = task.done;
         task.done = checkbox.checked;
-        // Log completion event when transitioning from not done to done
         if (!wasDone && task.done) {
           recordTaskEvent('Completed', task.text);
         }
-        // If marking a task done before currentTaskIndex, update index
+        // Advance current task pointer if necessary
         if (checkbox.checked && index === currentTaskIndex && currentTaskIndex < tasks.length) {
           currentTaskIndex++;
           updateCurrentTaskDisplay();
         }
         saveTasks();
         updateTasksList();
+        updateFlaggedTasksDisplay();
       });
+      // Star button to flag important tasks
+      const starBtn = document.createElement('button');
+      starBtn.className = 'star-button';
+      starBtn.textContent = task.starred ? '★' : '☆';
+      starBtn.title = task.starred ? 'Unstar task' : 'Star task';
+      starBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        task.starred = !task.starred;
+        saveTasks();
+        updateTasksList();
+        updateFlaggedTasksDisplay();
+      });
+      // Task text span
       const span = document.createElement('span');
       span.textContent = task.text;
       if (task.done) {
         span.style.textDecoration = 'line-through';
         span.style.opacity = '0.6';
       }
-      // Delete button for each task
+      // Delete button
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
       delBtn.className = 'delete-button';
       delBtn.addEventListener('click', (ev) => {
-        // Prevent click from bubbling to document (which may close the panel)
         ev.stopPropagation();
         const removed = tasks.splice(index, 1)[0];
-        // Adjust currentTaskIndex if necessary
         if (index < currentTaskIndex) {
           currentTaskIndex--;
         } else if (index === currentTaskIndex) {
-          // Current task was removed; currentTaskIndex now points to same index
-          // but tasks length decreased; update display accordingly
+          // pointer remains at same index
         }
         recordTaskEvent('Deleted', removed.text);
         saveTasks();
         updateTasksList();
         updateCurrentTaskDisplay();
+        updateFlaggedTasksDisplay();
       });
       li.appendChild(checkbox);
+      li.appendChild(starBtn);
       li.appendChild(span);
       li.appendChild(delBtn);
       tasksListEl.appendChild(li);
@@ -1189,7 +1773,7 @@
     if (!newTaskInputEl) return;
     const value = newTaskInputEl.value.trim();
     if (value.length === 0) return;
-    tasks.push({ text: value, done: false });
+    tasks.push({ text: value, done: false, starred: false });
     newTaskInputEl.value = '';
     saveTasks();
     updateTasksList();
@@ -1199,21 +1783,8 @@
   }
 
   // Open and close tasks panel
-  function openTasks() {
-    if (tasksPanelEl.classList.contains('hidden')) {
-      // Close other panels first
-      closeSettings();
-      closeHistory();
-      tasksPanelEl.classList.remove('hidden');
-      tasksPanelEl.classList.add('slideout');
-    } else {
-      closeTasks();
-    }
-  }
-  function closeTasks() {
-    tasksPanelEl.classList.add('hidden');
-    tasksPanelEl.classList.remove('slideout');
-  }
+  function openTasks() { togglePanel('tasks'); }
+  function closeTasks() { hidePanel('tasks'); }
 
   // Load history from localStorage
   function loadHistory() {
@@ -1272,8 +1843,10 @@
         const endDate = new Date(item.end);
         const startStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const endStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const durationMinutes = Math.floor(item.elapsed / 60);
-        const durationSeconds = item.elapsed % 60;
+        // Use planned duration (sessionTotalTime) if available, fallback to elapsed
+        const totalSeconds = typeof item.duration === 'number' ? item.duration : item.elapsed;
+        const durationMinutes = Math.floor(totalSeconds / 60);
+        const durationSeconds = totalSeconds % 60;
         const durationStr = `${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`;
         li.innerHTML = `<span>${item.type}</span><span>${startStr}–${endStr} (${durationStr})</span>`;
       }
@@ -1289,69 +1862,28 @@
   }
 
   // Open and close history panel
-  function openHistory() {
-    if (historyPanelEl.classList.contains('hidden')) {
-      // Close other panels
-      closeSettings();
-      closeTasks();
-      historyPanelEl.classList.remove('hidden');
-      historyPanelEl.classList.add('slideout');
-    } else {
-      closeHistory();
-    }
-  }
-  function closeHistory() {
-    historyPanelEl.classList.add('hidden');
-    historyPanelEl.classList.remove('slideout');
-  }
+  function openHistory() { togglePanel('history'); }
+  function closeHistory() { hidePanel('history'); }
 
   /** Audio settings panel functions */
-  function openAudio() {
-    if (audioPanelEl.classList.contains('hidden')) {
-      // Close other panels
-      closeSettings();
-      closeTasks();
-      closeHistory();
-      closeStats();
-      audioPanelEl.classList.remove('hidden');
-      audioPanelEl.classList.add('slideout');
-    } else {
-      closeAudio();
-    }
-  }
-  function closeAudio() {
-    audioPanelEl.classList.add('hidden');
-    audioPanelEl.classList.remove('slideout');
-  }
+  function openAudio() { togglePanel('audio'); }
+  function closeAudio() { hidePanel('audio'); }
 
   /** Statistics panel functions */
-  function openStats() {
-    if (statsPanelEl.classList.contains('hidden')) {
-      closeSettings();
-      closeTasks();
-      closeHistory();
-      closeAudio();
-      statsPanelEl.classList.remove('hidden');
-      statsPanelEl.classList.add('slideout');
-      updateStatsSummary();
-    } else {
-      closeStats();
-    }
-  }
-  function closeStats() {
-    statsPanelEl.classList.add('hidden');
-    statsPanelEl.classList.remove('slideout');
-  }
+  function openStats() { togglePanel('stats'); }
+  function closeStats() { hidePanel('stats'); }
+
   // Toggle audio playback independently of the timer
   function toggleAudio() {
-    if (!audioPlayerEl || !audioPlayerEl.src) return;
-    if (audioPlayerEl.paused) {
-      audioPlayerEl.play().catch(() => { });
-      if (audioToggleEl) audioToggleEl.textContent = '🔈';
+    if (!audioPlayerEl) return;
+    audioIsPlaying = !audioIsPlaying;
+    if (audioIsPlaying) {
+      if (!audioPlayerEl.src && audioSelectEl) applyAudioTrack(audioSelectEl.value);
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
     } else {
       audioPlayerEl.pause();
-      if (audioToggleEl) audioToggleEl.textContent = '🔇';
     }
+    refreshAudioIcons();
   }
   // Toggle mute/unmute, remembering the previous volume
   let previousVolume = DEFAULTS.volume;
@@ -1434,8 +1966,20 @@
 
   // Request notification permission on load
   function requestNotificationPermission() {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => { });
+    // Ask for notification permission only once. If permission is default and we
+    // haven't requested before, prompt the user and store a flag. Otherwise,
+    // do nothing.
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        const asked = localStorage.getItem('notificationPermissionRequested');
+        if (!asked) {
+          Notification.requestPermission().finally(() => {
+            localStorage.setItem('notificationPermissionRequested', 'true');
+          });
+        }
+      }
+    } catch (e) {
+      // Gracefully ignore errors (e.g. if Notification is undefined)
     }
   }
 
@@ -1462,6 +2006,21 @@
     if (muteToggleEl) muteToggleEl.addEventListener('click', toggleMute);
     if (audioProgressEl) audioProgressEl.addEventListener('input', seekAudio);
 
+    // Auto‑advance when the current track finishes
+    audioPlayerEl.addEventListener('ended', () => {
+      /* some MP3s report a duration that is shorter than reality.
+         Only skip if we are really at (or extremely close to) the end. */
+      if (
+        audioIsPlaying &&
+        audioPlayerEl.duration &&
+        audioPlayerEl.currentTime >= audioPlayerEl.duration * 0.95
+      ) {
+        nextTrack();
+      } else {
+        /* false alarm – just keep playing the same file */
+        audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
+      }
+    });
     // Audio genre change updates track options
     if (audioGenreSelectEl) audioGenreSelectEl.addEventListener('change', () => {
       updateAudioSelectOptions();
@@ -1480,58 +2039,25 @@
     if (prevTrackEl) prevTrackEl.addEventListener('click', previousTrack);
     if (nextTrackEl) nextTrackEl.addEventListener('click', nextTrack);
     if (audioPlayPauseEl) audioPlayPauseEl.addEventListener('click', togglePlayPause);
-    // Close settings when clicking outside panel
-    document.addEventListener('click', (e) => {
-      if (!settingsPanelEl.classList.contains('hidden')) {
-        const target = e.target;
-        if (!settingsPanelEl.contains(target) && target !== settingsButtonEl) {
-          // Save current timer state
-          const savedState = {
-            remainingTime,
-            currentSessionType,
-            sessionCount,
-            postponeUsed,
-            currentTaskIndex,
-            isRunning
-          };
-          closeSettings();
-          // reload preferences to revert changes in settings UI
-          loadPreferences();
-          // Restore timer state and UI
-          remainingTime = savedState.remainingTime;
-          currentSessionType = savedState.currentSessionType;
-          sessionCount = savedState.sessionCount;
-          postponeUsed = savedState.postponeUsed;
-          currentTaskIndex = savedState.currentTaskIndex;
-          updateDisplay();
-          updateCurrentTaskDisplay();
-          // If timer was running before opening settings, resume
-          if (savedState.isRunning) {
-            startTimer();
-          } else {
-            startButtonEl.textContent = 'Resume';
-          }
-        }
+    audioPlayerEl.addEventListener('timeupdate', updateAudioProgressBar);
+
+    document.addEventListener('click', (evt) => {
+      // A‑) inside a visible panel?
+      const insidePanel = [...PANELS.values()].some(
+        el => !el.classList.contains('hidden') && el.contains(evt.target)
+      );
+
+      // B‑) on ANY button (tray buttons, timer controls, etc.)?
+      //     `.closest` crawls up, so SVGs / emojis inside <button> still count.
+      const onButton = evt.target.closest('button');
+
+      // If it’s neither A nor B, it’s “empty space” – close everything.
+      if (!insidePanel && !onButton) {
+        PANELS.forEach((_, k) => hidePanel(k));
       }
     });
-    // Close tasks panel when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!tasksPanelEl.classList.contains('hidden')) {
-        const target = e.target;
-        if (!tasksPanelEl.contains(target) && target !== tasksButtonEl) {
-          closeTasks();
-        }
-      }
-    });
-    // Close history panel when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!historyPanelEl.classList.contains('hidden')) {
-        const target = e.target;
-        if (!historyPanelEl.contains(target) && target !== historyButtonEl) {
-          closeHistory();
-        }
-      }
-    });
+
+
     // Mode toggle click
     if (modeToggleEl) modeToggleEl.addEventListener('click', toggleSessionMode);
     // Tasks and history buttons
@@ -1562,23 +2088,12 @@
       prefs.themePreset = 'custom';
       localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
     });
-
-    // Clicking on the quote cycles to the next quote; the set‑theme button stops propagation
-    if (quoteDisplayEl) quoteDisplayEl.addEventListener('click', () => {
-      cycleQuote();
-    });
-    // Remove persistent theme quote when the remove button is clicked
-    if (removeThemeQuoteEl) removeThemeQuoteEl.addEventListener('click', (e) => {
-      e.preventDefault();
-      removeThemeQuote();
-    });
-    // Dark mode toggle
-    if (darkModeToggleEl) darkModeToggleEl.addEventListener('change', () => {
-      const enabled = darkModeToggleEl.checked;
-      applyDarkMode(enabled);
+    // Colour mode toggle button (light/dark)
+    if (colorModeToggleEl) colorModeToggleEl.addEventListener('click', () => {
+      toggleColorMode();
       // Save dark mode preference immediately
       const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.darkMode = enabled;
+      prefs.darkMode = darkMode;
       localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
     });
     // Theme preset selection
@@ -1614,25 +2129,6 @@
     // keyboard support
     document.addEventListener('keydown', handleKeydown);
 
-    // Close audio panel when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!audioPanelEl.classList.contains('hidden')) {
-        const target = e.target;
-        if (!audioPanelEl.contains(target) && target !== audioSettingsButtonEl) {
-          closeAudio();
-        }
-      }
-    });
-    // Close stats panel when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!statsPanelEl.classList.contains('hidden')) {
-        const target = e.target;
-        if (!statsPanelEl.contains(target) && target !== statsButtonEl) {
-          closeStats();
-        }
-      }
-    });
-
     // Audio settings button and close button
     if (audioSettingsButtonEl) audioSettingsButtonEl.addEventListener('click', openAudio);
     if (closeAudioEl) closeAudioEl.addEventListener('click', closeAudio);
@@ -1644,20 +2140,12 @@
   // Initialise application
   function init() {
     loadPreferences();
-    // Load the user's theme quote from localStorage and update its display
-    try {
-      const storedThemeQuote = localStorage.getItem('pomodoroThemeQuote');
-      themeQuote = storedThemeQuote || null;
-    } catch (e) {
-      console.warn('Could not read theme quote from storage:', e);
-      themeQuote = null;
-    }
-    updateThemeQuoteDisplay();
     requestNotificationPermission();
     attachEventListeners();
     updateDisplay();
     updateCurrentTaskDisplay();
     updateAudioProgressVisibility();
+    populateGenreSelect();
   }
 
   // Kick things off when DOM is ready
