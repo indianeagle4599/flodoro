@@ -164,15 +164,19 @@
   function showPanel(key) {
     const el = PANELS.get(key);
     if (!el) return;
-    el.classList.remove('hidden');
-    el.classList.add('slideout');
+    if (!el.classList.contains('slideout')) {
+      el.classList.add('slideout');
+      el.classList.remove('hidden');
+    }
   }
 
   function hidePanel(key) {
     const el = PANELS.get(key);
     if (!el) return;
-    el.classList.add('hidden');
-    el.classList.remove('slideout');
+    if (!el.classList.contains('hidden')) {
+      el.classList.add('hidden');
+      el.classList.remove('slideout');
+    }
   }
 
   function togglePanel(key) {
@@ -325,7 +329,7 @@
 
     // Load notification preferences and theme quote
     isNotificationActive = false
-    notificationMuted = typeof stored.notificationMuted === 'boolean' ? stored.notificationMuted : true;
+    notificationMuted = typeof stored.notificationMuted === 'boolean' ? stored.notificationMuted : false;
     notificationTimes = Array.isArray(stored.notificationTimes) ? stored.notificationTimes.slice() : [1, 5];
     notifyEnd = typeof stored.notifyEnd === 'boolean' ? stored.notifyEnd : true;
     themeQuote = localStorage.getItem('pomodoroThemeQuote') || null;
@@ -416,6 +420,7 @@
       bgColor2: bg2,
       audioGenre: genreSel,
       // Persist notification settings
+      notificationMuted: notificationMuted,
       notificationTimes: notificationTimes.slice(),
       notifyEnd: notifyEnd
     };
@@ -1924,9 +1929,7 @@
         postponeBreak();
         break;
       case 'Escape':
-        if (!settingsPanelEl.classList.contains('hidden')) {
-          closeSettings();
-        }
+        PANELS.forEach((_, k) => hidePanel(k));
         break;
       case '+':
       case '=': // shift plus on some keyboards
