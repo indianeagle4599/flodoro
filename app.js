@@ -164,19 +164,15 @@
   function showPanel(key) {
     const el = PANELS.get(key);
     if (!el) return;
-    if (!el.classList.contains('slideout')) {
-      el.classList.add('slideout');
-      el.classList.remove('hidden');
-    }
+    el.classList.add('slideout');
+    el.classList.remove('hidden');
   }
 
   function hidePanel(key) {
     const el = PANELS.get(key);
     if (!el) return;
-    if (!el.classList.contains('hidden')) {
-      el.classList.add('hidden');
-      el.classList.remove('slideout');
-    }
+    el.classList.add('hidden');
+    el.classList.remove('slideout');
   }
 
   function togglePanel(key) {
