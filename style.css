@@ -263,7 +263,8 @@ body {
 .tasks-panel,
 .history-panel,
 .audio-panel,
-.stats-panel {
+.stats-panel,
+.notification-panel {
   position: absolute;
   top: 4rem;
   /* below header */
@@ -287,7 +288,8 @@ body {
 .tasks-panel,
 .history-panel,
 .audio-panel,
-.stats-panel {
+.stats-panel,
+.notification-panel {
   right: 1.5rem;
 }
 
@@ -316,6 +318,7 @@ body {
 .volume-row input[type="range"] {
   flex: 1;
   -webkit-appearance: none;
+  appearance: none;
   height: 4px;
   border-radius: 2px;
   background: var(--color-secondary);
@@ -324,6 +327,7 @@ body {
 
 .volume-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -445,40 +449,144 @@ body {
   color: var(--color-accent-light);
 }
 
-/* Notification settings: custom times row and chips */
-.notify-options {
+/* Notification settings: launch row, focused panel controls and reminder chips */
+.notification-launch-row {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 0.75rem;
+}
+
+.settings-summary {
+  color: var(--color-secondary);
+  display: flex;
+  flex: 1;
   flex-wrap: wrap;
-  margin-bottom: 0.5rem;
+  gap: 0.35rem;
+  line-height: 1.35;
+}
+
+.settings-summary-chip {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  padding: 0.25rem 0.45rem;
+  white-space: nowrap;
+}
+
+.compact-panel-button {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.notification-content,
+.notification-settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-section {
+  gap: 0.5rem;
+}
+
+.notification-toggle-row,
+.notify-timing-option {
+  display: flex;
   align-items: center;
+  gap: 0.45rem;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+.notification-toggle-row {
+  justify-content: space-between;
+}
+
+.notification-toggle-row-primary {
+  font-weight: 600;
+}
+
+.notification-output-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.notification-sub-toggle,
+.notify-timing-option {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.notification-toggle-row input,
+.notify-timing-option input {
+  accent-color: var(--color-accent);
+}
+
+.notification-toggle-row:has(input:disabled),
+.notify-timing-option:has(input:disabled),
+.custom-notify-row input:disabled,
+.custom-notify-row button:disabled,
+.custom-notify-chip button:disabled {
+  opacity: 0.55;
+}
+
+.notify-options {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   font-size: 0.9rem;
 }
 
 .custom-notify-row {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+}
+
+.custom-notify-row input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .custom-notify-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.5rem;
 }
 
 .custom-notify-chip {
   background: rgba(255, 255, 255, 0.1);
   color: var(--color-primary);
   padding: 0.35rem 0.6rem;
-  border-radius: 0.6rem;
+  border-radius: 0.5rem;
   font-size: 0.8rem;
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
+.notification-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .notification-output-row,
+  .notify-options {
+    grid-template-columns: 1fr;
+  }
+}
 /* Hide the current task display since flagged tasks are shown instead */
 .current-task {
   display: none !important;
@@ -487,6 +595,7 @@ body {
 /* Custom range styling for the audio progress bar */
 #audio-progress {
   -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   height: 0.35rem;
   border-radius: 0.5rem;
@@ -509,6 +618,7 @@ body {
 
 #audio-progress::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 0.9rem;
   height: 0.9rem;
   border-radius: 50%;

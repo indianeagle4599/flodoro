@@ -1,2 +1,11 @@
 *.mp3
 !assets/audio/*
+.vscode
+
+# Agent/human local context files
+agent-kit/
+AGENTS.md
+CLAUDE.md
+TODO.md
+docs/CONTEXT.md
+docs/audio-assets.md

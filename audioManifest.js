@@ -334,33 +334,33 @@ const audioManifest = {
     " You Complete Me - Relax Cafe Music BGM": "assets/music/Jazz Club/ You Complete Me - Relax Cafe Music BGM.mp3",
     " Your Blue Eyes - Relax Cafe Music BGM": "assets/music/Jazz Club/ Your Blue Eyes - Relax Cafe Music BGM.mp3",
     " Your Choice Energy - Relax Cafe Music BGM": "assets/music/Jazz Club/ Your Choice Energy - Relax Cafe Music BGM.mp3",
-    " -A Breathtaking Piano Piece- by Jervy Hou - Jervy Hou": "assets/music/Library/ -A Breathtaking Piano Piece- by Jervy Hou - Jervy Hou.mp3",
-    " 95 \u4e45\u9060 \uff5e\u5149\u3068\u6ce2\u306e\u8a18\u61b6\uff5e - Kuon -Memories of Waves and Light- - \u6c5f\u53e3\u8cb4\u52c5 & \u677e\u679d\u8cc0\u5b50": "assets/music/Library/ 95 \u4e45\u9060 \uff5e\u5149\u3068\u6ce2\u306e\u8a18\u61b6\uff5e - Kuon -Memories of Waves and Light- - \u6c5f\u53e3\u8cb4\u52c5 & \u677e\u679d\u8cc0\u5b50.mp3",
-    " A House Full of Memories - John Abbot": "assets/music/Library/ A House Full of Memories - John Abbot.mp3",
-    " Airy-Fairy Heart - Franz Gordon": "assets/music/Library/ Airy-Fairy Heart - Franz Gordon.mp3",
-    " austin farwell - new home (slowed) - Vezal": "assets/music/Library/ austin farwell - new home (slowed) - Vezal.mp3",
-    " Beautiful - Logic23": "assets/music/Library/ Beautiful - Logic23.mp3",
-    " Bill And Frank OST (ft. Main Theme)- The Last Of Us HBO Episode 3 Soundtrack - MaRio Magdy": "assets/music/Library/ Bill And Frank OST (ft. Main Theme)- The Last Of Us HBO Episode 3 Soundtrack - MaRio Magdy.mp3",
-    " C418 - Subwoofer Lullaby (Cover) - ibi": "assets/music/Library/ C418 - Subwoofer Lullaby (Cover) - ibi.mp3",
-    " Darkest Night - Tony Anderson - Tony Anderson": "assets/music/Library/ Darkest Night - Tony Anderson - Tony Anderson.mp3",
-    " Declaration - Johannes Bornl\u00f6f": "assets/music/Library/ Declaration - Johannes Bornl\u00f6f.mp3",
-    " hope to see you again (sped up) - Antent": "assets/music/Library/ hope to see you again (sped up) - Antent.mp3",
-    " Il Reste Du Temps - Lo Mimieux": "assets/music/Library/ Il Reste Du Temps - Lo Mimieux.mp3",
-    " In the Stillness - Megan Wofford": "assets/music/Library/ In the Stillness - Megan Wofford.mp3",
-    " Jamais perdu - Lo Mimieux": "assets/music/Library/ Jamais perdu - Lo Mimieux.mp3",
-    " Kuon -Memories of Waves and Light- - Noriko Matsueda - Takahito Eguchi": "assets/music/Library/ Kuon -Memories of Waves and Light- - Noriko Matsueda - Takahito Eguchi.mp3",
-    " Le Jardin de Monsieur Monet - Stephan Moccio": "assets/music/Library/ Le Jardin de Monsieur Monet - Stephan Moccio.mp3",
-    " never see you again - Antent": "assets/music/Library/ never see you again - Antent.mp3",
-    " Painting The Sun by David Lanz - Mahanoosika Nakanaka": "assets/music/Library/ Painting The Sun by David Lanz - Mahanoosika Nakanaka.mp3",
-    " Questo Momento - www.antoniolascalia.com - Antonio La Scalia": "assets/music/Library/ Questo Momento - www.antoniolascalia.com - Antonio La Scalia.mp3",
-    " Reminiscence - Johannes Bornl\u00f6f": "assets/music/Library/ Reminiscence - Johannes Bornl\u00f6f.mp3",
-    " Seb Wery - Morning Light - Seb Wery": "assets/music/Library/ Seb Wery - Morning Light - Seb Wery.mp3",
-    " Sentient - Gavin Luke": "assets/music/Library/ Sentient - Gavin Luke.mp3",
-    " snowfall w- \u00d8neheart - reidenshi; \u00d8neheart": "assets/music/Library/ snowfall w- \u00d8neheart - reidenshi; \u00d8neheart.mp3",
-    " The Rose And The Thorn - Johannes Bornl\u00f6f": "assets/music/Library/ The Rose And The Thorn - Johannes Bornl\u00f6f.mp3",
-    " Turning Ahead - Aurelius Conner": "assets/music/Library/ Turning Ahead - Aurelius Conner.mp3",
-    " Vistoris Lake - Arden Forest": "assets/music/Library/ Vistoris Lake - Arden Forest.mp3",
-    " With The Wind - Yehezkel Raz & Evgeny Grinko": "assets/music/Library/ With The Wind - Yehezkel Raz & Evgeny Grinko.mp3",
+    " -A Breathtaking Piano Piece- by Jervy Hou - Jervy Hou": "assets/music/Library Vibes/ -A Breathtaking Piano Piece- by Jervy Hou - Jervy Hou.mp3",
+    " 95 \u4e45\u9060 \uff5e\u5149\u3068\u6ce2\u306e\u8a18\u61b6\uff5e - Kuon -Memories of Waves and Light- - \u6c5f\u53e3\u8cb4\u52c5 & \u677e\u679d\u8cc0\u5b50": "assets/music/Library Vibes/ 95 \u4e45\u9060 \uff5e\u5149\u3068\u6ce2\u306e\u8a18\u61b6\uff5e - Kuon -Memories of Waves and Light- - \u6c5f\u53e3\u8cb4\u52c5 & \u677e\u679d\u8cc0\u5b50.mp3",
+    " A House Full of Memories - John Abbot": "assets/music/Library Vibes/ A House Full of Memories - John Abbot.mp3",
+    " Airy-Fairy Heart - Franz Gordon": "assets/music/Library Vibes/ Airy-Fairy Heart - Franz Gordon.mp3",
+    " austin farwell - new home (slowed) - Vezal": "assets/music/Library Vibes/ austin farwell - new home (slowed) - Vezal.mp3",
+    " Beautiful - Logic23": "assets/music/Library Vibes/ Beautiful - Logic23.mp3",
+    " Bill And Frank OST (ft. Main Theme)- The Last Of Us HBO Episode 3 Soundtrack - MaRio Magdy": "assets/music/Library Vibes/ Bill And Frank OST (ft. Main Theme)- The Last Of Us HBO Episode 3 Soundtrack - MaRio Magdy.mp3",
+    " C418 - Subwoofer Lullaby (Cover) - ibi": "assets/music/Library Vibes/ C418 - Subwoofer Lullaby (Cover) - ibi.mp3",
+    " Darkest Night - Tony Anderson - Tony Anderson": "assets/music/Library Vibes/ Darkest Night - Tony Anderson - Tony Anderson.mp3",
+    " Declaration - Johannes Bornl\u00f6f": "assets/music/Library Vibes/ Declaration - Johannes Bornl\u00f6f.mp3",
+    " hope to see you again (sped up) - Antent": "assets/music/Library Vibes/ hope to see you again (sped up) - Antent.mp3",
+    " Il Reste Du Temps - Lo Mimieux": "assets/music/Library Vibes/ Il Reste Du Temps - Lo Mimieux.mp3",
+    " In the Stillness - Megan Wofford": "assets/music/Library Vibes/ In the Stillness - Megan Wofford.mp3",
+    " Jamais perdu - Lo Mimieux": "assets/music/Library Vibes/ Jamais perdu - Lo Mimieux.mp3",
+    " Kuon -Memories of Waves and Light- - Noriko Matsueda - Takahito Eguchi": "assets/music/Library Vibes/ Kuon -Memories of Waves and Light- - Noriko Matsueda - Takahito Eguchi.mp3",
+    " Le Jardin de Monsieur Monet - Stephan Moccio": "assets/music/Library Vibes/ Le Jardin de Monsieur Monet - Stephan Moccio.mp3",
+    " never see you again - Antent": "assets/music/Library Vibes/ never see you again - Antent.mp3",
+    " Painting The Sun by David Lanz - Mahanoosika Nakanaka": "assets/music/Library Vibes/ Painting The Sun by David Lanz - Mahanoosika Nakanaka.mp3",
+    " Questo Momento - www.antoniolascalia.com - Antonio La Scalia": "assets/music/Library Vibes/ Questo Momento - www.antoniolascalia.com - Antonio La Scalia.mp3",
+    " Reminiscence - Johannes Bornl\u00f6f": "assets/music/Library Vibes/ Reminiscence - Johannes Bornl\u00f6f.mp3",
+    " Seb Wery - Morning Light - Seb Wery": "assets/music/Library Vibes/ Seb Wery - Morning Light - Seb Wery.mp3",
+    " Sentient - Gavin Luke": "assets/music/Library Vibes/ Sentient - Gavin Luke.mp3",
+    " snowfall w- \u00d8neheart - reidenshi; \u00d8neheart": "assets/music/Library Vibes/ snowfall w- \u00d8neheart - reidenshi; \u00d8neheart.mp3",
+    " The Rose And The Thorn - Johannes Bornl\u00f6f": "assets/music/Library Vibes/ The Rose And The Thorn - Johannes Bornl\u00f6f.mp3",
+    " Turning Ahead - Aurelius Conner": "assets/music/Library Vibes/ Turning Ahead - Aurelius Conner.mp3",
+    " Vistoris Lake - Arden Forest": "assets/music/Library Vibes/ Vistoris Lake - Arden Forest.mp3",
+    " With The Wind - Yehezkel Raz & Evgeny Grinko": "assets/music/Library Vibes/ With The Wind - Yehezkel Raz & Evgeny Grinko.mp3",
     " 03 C418 - Subwoofer Lullaby - Minecraft Wizards": "assets/music/Minecraft/ 03 C418 - Subwoofer Lullaby - Minecraft Wizards.mp3",
     " 05 C418 - Living Mice - Minecraft Wizards": "assets/music/Minecraft/ 05 C418 - Living Mice - Minecraft Wizards.mp3",
     " 06 C418 - Moog City - Minecraft Wizards": "assets/music/Minecraft/ 06 C418 - Moog City - Minecraft Wizards.mp3",
@@ -369,7 +369,6 @@ const audioManifest = {
     " 09 C418 - Oxyg\u00e8ne - Minecraft Wizards": "assets/music/Minecraft/ 09 C418 - Oxyg\u00e8ne - Minecraft Wizards.mp3",
     " 10 C418 - \u00c9quinoxe - Minecraft Wizards": "assets/music/Minecraft/ 10 C418 - \u00c9quinoxe - Minecraft Wizards.mp3",
     " 11 C418 - Mice On Venus - Minecraft Wizards": "assets/music/Minecraft/ 11 C418 - Mice On Venus - Minecraft Wizards.mp3",
-    " 12 C418 - Dry Hands - Minecraft Wizards": "assets/music/Minecraft/ 12 C418 - Dry Hands - Minecraft Wizards.mp3",
     " 13 C418 - Wet Hands - Minecraft Wizards": "assets/music/Minecraft/ 13 C418 - Wet Hands - Minecraft Wizards.mp3",
     " 14 C418 - Clark - Minecraft Wizards": "assets/music/Minecraft/ 14 C418 - Clark - Minecraft Wizards.mp3",
     " 15. Chris - Minecraft Official": "assets/music/Minecraft/ 15. Chris - Minecraft Official.mp3",
@@ -387,7 +386,8 @@ const audioManifest = {
     " C418 - Floating Trees - DemSec": "assets/music/Minecraft/ C418 - Floating Trees - DemSec.mp3",
     " C418 - Moog City 2 - DemSec": "assets/music/Minecraft/ C418 - Moog City 2 - DemSec.mp3",
     " C418 - Mutation - DemSec": "assets/music/Minecraft/ C418 - Mutation - DemSec.mp3",
-    " C418 - Strad - Vrokish": "assets/music/Minecraft/ C418 - Strad - Vrokish.mp3"
+    " C418 - Strad - Vrokish": "assets/music/Minecraft/ C418 - Strad - Vrokish.mp3",
+    "12 C418 - Dry Hands - Minecraft Wizards": "assets/music/Minecraft/12 C418 - Dry Hands - Minecraft Wizards.mp3"
   },
   "audioLibrary": {
     "Coffee Lounge \u2615": [
@@ -1732,7 +1732,7 @@ const audioManifest = {
         "name": "Your Choice Energy Relax Cafe Music Bgm"
       }
     ],
-    "Library": [
+    "Library Vibes": [
       {
         "id": " 95 \u4e45\u9060 \uff5e\u5149\u3068\u6ce2\u306e\u8a18\u61b6\uff5e - Kuon -Memories of Waves and Light- - \u6c5f\u53e3\u8cb4\u52c5 & \u677e\u679d\u8cc0\u5b50",
         "name": "95 \u4e45\u9060 \uff5e\u5149\u3068\u6ce2\u306e\u8a18\u61b6\uff5e Kuon Memories Of Waves And Light \u6c5f\u53e3\u8cb4\u52c5 & \u677e\u679d\u8cc0\u5b50"
@@ -1876,7 +1876,7 @@ const audioManifest = {
         "name": "11 C418 Mice On Venus Minecraft Wizards"
       },
       {
-        "id": " 12 C418 - Dry Hands - Minecraft Wizards",
+        "id": "12 C418 - Dry Hands - Minecraft Wizards",
         "name": "12 C418 Dry Hands Minecraft Wizards"
       },
       {

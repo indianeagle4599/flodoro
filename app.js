@@ -34,7 +34,12 @@
 
     // Theme
     darkMode: true,
-    themePreset: 'custom'
+    themePreset: 'custom',
+
+    // Notifications
+    notificationMuted: false,
+    notificationSoundsEnabled: true,
+    notificationVisualAlertsEnabled: true
   };
 
 
@@ -60,8 +65,10 @@
   // Audio genre (category)
   let audioGenre = DEFAULTS.audioGenre;
 
-  // Notification settings: minutes before session end (e.g. [1,5]) and whether to notify at completion.
-  // Defaults: notify 1 minute and 5 minutes before end, and at completion.
+  // Notification settings: timing plus output channels.
+  let notificationMuted = DEFAULTS.notificationMuted;
+  let notificationSoundsEnabled = DEFAULTS.notificationSoundsEnabled;
+  let notificationVisualAlertsEnabled = DEFAULTS.notificationVisualAlertsEnabled;
   let notificationTimes = [1, 5];
   let notifyEnd = true;
 
@@ -143,6 +150,11 @@
   const statsPanelEl = document.getElementById('stats-panel');
   const closeStatsEl = document.getElementById('close-stats');
   const statsSummaryEl = document.getElementById('stats-summary');
+  const notificationSettingsButtonEl = document.getElementById('notification-settings-button');
+  const notificationSettingsSummaryEl = document.getElementById('notification-settings-summary');
+  const notificationPanelEl = document.getElementById('notification-panel');
+  const backNotificationsEl = document.getElementById('back-notifications');
+  const closeNotificationsEl = document.getElementById('close-notifications');
   const quoteDisplayEl = document.getElementById('quote-display');
 
   // Element for displaying the user's theme quote (quote of the day)
@@ -159,6 +171,7 @@
     ['history', historyPanelEl],
     ['audio', audioPanelEl],
     ['stats', statsPanelEl],
+    ['notifications', notificationPanelEl],
   ]);
 
   function showPanel(key) {
@@ -281,15 +294,19 @@
         if (counts[item.type] !== undefined) counts[item.type]++;
       }
     });
-    // Compose HTML summary
-    let html = '';
-    html += `<div>Work sessions: ${counts['Work']}</div>`;
-    html += `<div>Short breaks: ${counts['Short Break']}</div>`;
-    html += `<div>Long breaks: ${counts['Long Break']}</div>`;
-    html += `<div>Tasks added: ${counts['Task Added']}</div>`;
-    html += `<div>Tasks completed: ${counts['Task Completed']}</div>`;
-    html += `<div>Tasks deleted: ${counts['Task Deleted']}</div>`;
-    statsSummaryEl.innerHTML = html;
+    statsSummaryEl.replaceChildren();
+    [
+      ['Work sessions', counts['Work']],
+      ['Short breaks', counts['Short Break']],
+      ['Long breaks', counts['Long Break']],
+      ['Tasks added', counts['Task Added']],
+      ['Tasks completed', counts['Task Completed']],
+      ['Tasks deleted', counts['Task Deleted']]
+    ].forEach(([label, value]) => {
+      const row = document.createElement('div');
+      row.textContent = `${label}: ${value}`;
+      statsSummaryEl.appendChild(row);
+    });
   }
 
   /*
@@ -298,16 +315,6 @@
    * ensures the timer persists user choices across sessions.
    */
   function loadPreferences() {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          console.log('Notification permission granted.');
-        } else {
-          console.warn('Notifications will be disabled (permission not granted).');
-        }
-      });
-    }
-
     const stored = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     workDuration = parseInt(stored.workDuration || DEFAULTS.workDuration, 10);
     shortBreakDuration = parseInt(stored.shortBreakDuration || DEFAULTS.shortBreakDuration, 10);
@@ -325,8 +332,18 @@
 
     // Load notification preferences and theme quote
     isNotificationActive = false
-    notificationMuted = typeof stored.notificationMuted === 'boolean' ? stored.notificationMuted : false;
-    notificationTimes = Array.isArray(stored.notificationTimes) ? stored.notificationTimes.slice() : [1, 5];
+    notificationMuted = typeof stored.notificationMuted === 'boolean'
+      ? stored.notificationMuted
+      : DEFAULTS.notificationMuted;
+    notificationSoundsEnabled = typeof stored.notificationSoundsEnabled === 'boolean'
+      ? stored.notificationSoundsEnabled
+      : DEFAULTS.notificationSoundsEnabled;
+    notificationVisualAlertsEnabled = typeof stored.notificationVisualAlertsEnabled === 'boolean'
+      ? stored.notificationVisualAlertsEnabled
+      : DEFAULTS.notificationVisualAlertsEnabled;
+    notificationTimes = Array.isArray(stored.notificationTimes)
+      ? normalizeNotificationTimes(stored.notificationTimes)
+      : [1, 5];
     notifyEnd = typeof stored.notifyEnd === 'boolean' ? stored.notifyEnd : true;
     themeQuote = localStorage.getItem('pomodoroThemeQuote') || null;
     // Tasks are loaded separately via loadTasks()
@@ -417,6 +434,8 @@
       audioGenre: genreSel,
       // Persist notification settings
       notificationMuted: notificationMuted,
+      notificationSoundsEnabled: notificationSoundsEnabled,
+      notificationVisualAlertsEnabled: notificationVisualAlertsEnabled,
       notificationTimes: notificationTimes.slice(),
       notifyEnd: notifyEnd
     };
@@ -670,28 +689,32 @@
     }
     const quote = quotes[currentQuoteIndex];
     const starred = themeQuote === quote;
-    // Build HTML: quote text and star button
-    quoteDisplayEl.innerHTML = `<span class="quote-text">${quote}</span><button id="quote-star-btn" class="star-quote-btn" title="Set as quote of the day">${starred ? '★' : '☆'}</button>`;
+    const quoteText = document.createElement('span');
+    quoteText.className = 'quote-text';
+    quoteText.textContent = quote;
+    const starBtn = document.createElement('button');
+    starBtn.id = 'quote-star-btn';
+    starBtn.className = 'star-quote-btn';
+    starBtn.title = 'Set as quote of the day';
+    starBtn.textContent = starred ? '★' : '☆';
+    quoteDisplayEl.replaceChildren(quoteText, starBtn);
     quoteDisplayEl.classList.remove('hidden');
     // Clicking the quote cycles to next
     quoteDisplayEl.onclick = () => {
       cycleQuote();
     };
     // Star button toggles theme quote
-    const starBtn = document.getElementById('quote-star-btn');
-    if (starBtn) {
-      starBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        if (themeQuote === quote) {
-          themeQuote = null;
-        } else {
-          themeQuote = quote;
-        }
-        persistThemeQuote();
-        updateThemeQuoteDisplay();
-        updateQuoteDisplay();
-      });
-    }
+    starBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (themeQuote === quote) {
+        themeQuote = null;
+      } else {
+        themeQuote = quote;
+      }
+      persistThemeQuote();
+      updateThemeQuoteDisplay();
+      updateQuoteDisplay();
+    });
   }
 
   function cycleQuote() {
@@ -710,21 +733,26 @@
   function updateThemeQuoteDisplay() {
     if (!themeQuoteDisplayEl) return;
     if (themeQuote) {
-      themeQuoteDisplayEl.innerHTML = `<span class="theme-quote-text">${themeQuote}</span><button id="remove-theme-quote" class="remove-theme-btn" title="Remove quote of the day">✕</button>`;
+      const themeQuoteText = document.createElement('span');
+      themeQuoteText.className = 'theme-quote-text';
+      themeQuoteText.textContent = themeQuote;
+      const removeBtn = document.createElement('button');
+      removeBtn.id = 'remove-theme-quote';
+      removeBtn.className = 'remove-theme-btn';
+      removeBtn.title = 'Remove quote of the day';
+      removeBtn.textContent = '✕';
+      themeQuoteDisplayEl.replaceChildren(themeQuoteText, removeBtn);
       themeQuoteDisplayEl.classList.remove('hidden');
-      const removeBtn = document.getElementById('remove-theme-quote');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          themeQuote = null;
-          persistThemeQuote();
-          updateThemeQuoteDisplay();
-          updateQuoteDisplay();
-        });
-      }
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        themeQuote = null;
+        persistThemeQuote();
+        updateThemeQuoteDisplay();
+        updateQuoteDisplay();
+      });
     } else {
       themeQuoteDisplayEl.classList.add('hidden');
-      themeQuoteDisplayEl.innerHTML = '';
+      themeQuoteDisplayEl.replaceChildren();
     }
   }
 
@@ -739,82 +767,177 @@
    */
   let notificationUIElements = null;
 
+  function normalizeNotificationTimes(times) {
+    const values = Array.isArray(times) ? times : [];
+    return [...new Set(values
+      .map((time) => parseInt(time, 10))
+      .filter((time) => Number.isInteger(time) && time > 0))]
+      .sort((a, b) => a - b);
+  }
+
+  function formatReminderLabel(minutes) {
+    return `${minutes} min early`;
+  }
+
+  function getNotificationSummaryItems() {
+    if (notificationMuted) return ['Notifications off'];
+
+    const reminders = normalizeNotificationTimes(notificationTimes).map(formatReminderLabel);
+    if (notifyEnd) reminders.push('When session ends');
+    if (reminders.length === 0) return ['No timing selected'];
+    return reminders;
+  }
+
+  function renderSummaryChip(text) {
+    const chip = document.createElement('span');
+    chip.className = 'settings-summary-chip';
+    chip.textContent = text;
+    return chip;
+  }
+
+  function updateNotificationSummary() {
+    if (!notificationSettingsSummaryEl) return;
+    notificationSettingsSummaryEl.replaceChildren();
+    getNotificationSummaryItems().forEach((item) => {
+      notificationSettingsSummaryEl.appendChild(renderSummaryChip(item));
+    });
+  }
+
   function initNotificationSettingsUI() {
-    if (!notificationSettingsContainerEl) return;
-    notificationSettingsContainerEl.innerHTML = '';
+    if (!notificationSettingsContainerEl) {
+      updateNotificationSummary();
+      return;
+    }
+
+    notificationSettingsContainerEl.replaceChildren();
+
     const group = document.createElement('div');
-    group.className = 'settings-group';
-    const label = document.createElement('label');
-    label.textContent = 'Notifications';
-    const masterNotifyCheckbox = document.createElement('input');
-    masterNotifyCheckbox.type = 'checkbox';
-    masterNotifyCheckbox.id = 'notifications-enabled-checkbox';
-    masterNotifyCheckbox.style.marginLeft = "8px";
-    masterNotifyCheckbox.checked = !notificationMuted;
-    label.appendChild(masterNotifyCheckbox);
-    group.appendChild(label);
+    group.className = 'notification-settings-stack';
+
+    const masterGroup = document.createElement('div');
+    masterGroup.className = 'settings-group notification-section';
+    const masterLabel = document.createElement('label');
+    masterLabel.className = 'notification-toggle-row notification-toggle-row-primary';
+    const masterText = document.createElement('span');
+    masterText.textContent = 'Notifications';
+    const notificationsCheckbox = document.createElement('input');
+    notificationsCheckbox.type = 'checkbox';
+    notificationsCheckbox.id = 'notifications-enabled-checkbox';
+    notificationsCheckbox.checked = !notificationMuted;
+    masterLabel.appendChild(masterText);
+    masterLabel.appendChild(notificationsCheckbox);
+    masterGroup.appendChild(masterLabel);
+    group.appendChild(masterGroup);
+
+    const outputGroup = document.createElement('div');
+    outputGroup.className = 'settings-group notification-section notification-output-section';
+    const outputLabel = document.createElement('label');
+    outputLabel.textContent = 'Notify by';
+    outputGroup.appendChild(outputLabel);
+
+    const outputRow = document.createElement('div');
+    outputRow.className = 'notification-output-row';
+
+    function createOutputToggle(id, text) {
+      const label = document.createElement('label');
+      label.className = 'notification-toggle-row notification-sub-toggle';
+      const labelText = document.createElement('span');
+      labelText.textContent = text;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = id;
+      label.appendChild(labelText);
+      label.appendChild(checkbox);
+      return { label, checkbox };
+    }
+
+    const { label: soundLabel, checkbox: soundCheckbox } = createOutputToggle('notification-sounds-checkbox', 'Sounds');
+    const { label: visualLabel, checkbox: visualCheckbox } = createOutputToggle('notification-visual-alerts-checkbox', 'On-screen alerts');
+    outputRow.appendChild(soundLabel);
+    outputRow.appendChild(visualLabel);
+    outputGroup.appendChild(outputRow);
+    group.appendChild(outputGroup);
+
+    const reminderGroup = document.createElement('div');
+    reminderGroup.className = 'settings-group notification-section';
+    const reminderLabel = document.createElement('label');
+    reminderLabel.textContent = 'Notification timing';
+    reminderGroup.appendChild(reminderLabel);
+
     const optionsRow = document.createElement('div');
     optionsRow.className = 'notify-options';
-    // 1 minute checkbox
-    const oneMinLabel = document.createElement('label');
-    const oneMinCheckbox = document.createElement('input');
-    oneMinCheckbox.type = 'checkbox';
-    oneMinCheckbox.id = 'notify-1min';
-    oneMinLabel.appendChild(oneMinCheckbox);
-    oneMinLabel.appendChild(document.createTextNode('1 minute'));
+
+    function createNotifyOption(id, text) {
+      const optionLabel = document.createElement('label');
+      optionLabel.className = 'notify-timing-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = id;
+      const optionText = document.createElement('span');
+      optionText.textContent = text;
+      optionLabel.appendChild(checkbox);
+      optionLabel.appendChild(optionText);
+      return { optionLabel, checkbox };
+    }
+
+    const { optionLabel: oneMinLabel, checkbox: oneMinCheckbox } = createNotifyOption('notify-1min', '1 min early');
+    const { optionLabel: fiveMinLabel, checkbox: fiveMinCheckbox } = createNotifyOption('notify-5min', '5 min early');
+    const { optionLabel: endLabel, checkbox: endCheckbox } = createNotifyOption('notify-end', 'When session ends');
+
     optionsRow.appendChild(oneMinLabel);
-    // 5 minutes checkbox
-    const fiveMinLabel = document.createElement('label');
-    const fiveMinCheckbox = document.createElement('input');
-    fiveMinCheckbox.type = 'checkbox';
-    fiveMinCheckbox.id = 'notify-5min';
-    fiveMinLabel.appendChild(fiveMinCheckbox);
-    fiveMinLabel.appendChild(document.createTextNode('5 minutes'));
     optionsRow.appendChild(fiveMinLabel);
-    // Completion checkbox
-    const endLabel = document.createElement('label');
-    const endCheckbox = document.createElement('input');
-    endCheckbox.type = 'checkbox';
-    endCheckbox.id = 'notify-end';
-    endLabel.appendChild(endCheckbox);
-    endLabel.appendChild(document.createTextNode('Completion'));
     optionsRow.appendChild(endLabel);
-    group.appendChild(optionsRow);
-    // Custom input row
+    reminderGroup.appendChild(optionsRow);
+
     const customRow = document.createElement('div');
     customRow.className = 'custom-notify-row';
     const customInput = document.createElement('input');
     customInput.type = 'number';
     customInput.min = '1';
-    customInput.placeholder = 'Minutes before end';
+    customInput.placeholder = 'Minutes early';
     customInput.id = 'custom-notify-input';
     const addCustomBtn = document.createElement('button');
     addCustomBtn.className = 'control-button';
     addCustomBtn.textContent = 'Add';
-    addCustomBtn.title = 'Add custom notification';
+    addCustomBtn.title = 'Add custom notification timing';
     customRow.appendChild(customInput);
     customRow.appendChild(addCustomBtn);
-    group.appendChild(customRow);
+    reminderGroup.appendChild(customRow);
+
     const customList = document.createElement('div');
     customList.id = 'custom-notify-list';
     customList.className = 'custom-notify-list';
-    group.appendChild(customList);
+    reminderGroup.appendChild(customList);
+    group.appendChild(reminderGroup);
+
     notificationSettingsContainerEl.appendChild(group);
-    // Handler to add a custom time
+
     function addCustomTime() {
       const val = parseInt(customInput.value, 10);
-      if (!isNaN(val) && val > 0 && !notificationTimes.includes(val)) {
-        notificationTimes.push(val);
+      if (Number.isInteger(val) && val > 0) {
+        notificationTimes = normalizeNotificationTimes([...notificationTimes, val]);
         persistNotificationSettings();
         updateNotificationUI();
       }
       customInput.value = '';
     }
-    // Event listeners
-    masterNotifyCheckbox.addEventListener('change', () => {
-      notificationMuted = !masterNotifyCheckbox.checked; // true = muted
-      persistNotificationSettings(); // Persist your updated settings
-      updateNotificationUI();    // Optionally refresh parts of the UI
+
+    notificationsCheckbox.addEventListener('change', () => {
+      notificationMuted = !notificationsCheckbox.checked;
+      persistNotificationSettings();
+      if (!notificationMuted && notificationVisualAlertsEnabled) requestNotificationPermission();
+      updateNotificationUI();
+    });
+    soundCheckbox.addEventListener('change', () => {
+      notificationSoundsEnabled = soundCheckbox.checked;
+      persistNotificationSettings();
+      updateNotificationUI();
+    });
+    visualCheckbox.addEventListener('change', () => {
+      notificationVisualAlertsEnabled = visualCheckbox.checked;
+      persistNotificationSettings();
+      if (!notificationMuted && notificationVisualAlertsEnabled) requestNotificationPermission();
+      updateNotificationUI();
     });
     oneMinCheckbox.addEventListener('change', () => {
       toggleNotifyTime(1, oneMinCheckbox.checked);
@@ -825,6 +948,7 @@
     endCheckbox.addEventListener('change', () => {
       notifyEnd = endCheckbox.checked;
       persistNotificationSettings();
+      updateNotificationUI();
     });
     addCustomBtn.addEventListener('click', addCustomTime);
     customInput.addEventListener('keydown', (e) => {
@@ -833,11 +957,16 @@
         addCustomTime();
       }
     });
+
     notificationUIElements = {
-      masterNotifyCheckbox,
+      notificationsCheckbox,
+      soundCheckbox,
+      visualCheckbox,
       oneMinCheckbox,
       fiveMinCheckbox,
       endCheckbox,
+      customInput,
+      addCustomBtn,
       customList
     };
     updateNotificationUI();
@@ -846,7 +975,7 @@
   function toggleNotifyTime(minutes, enabled) {
     if (enabled) {
       if (!notificationTimes.includes(minutes)) {
-        notificationTimes.push(minutes);
+        notificationTimes = normalizeNotificationTimes([...notificationTimes, minutes]);
       }
     } else {
       notificationTimes = notificationTimes.filter((t) => t !== minutes);
@@ -856,21 +985,46 @@
   }
 
   function updateNotificationUI() {
+    notificationTimes = normalizeNotificationTimes(notificationTimes);
+    updateNotificationSummary();
     if (!notificationUIElements) return;
-    const { oneMinCheckbox, fiveMinCheckbox, endCheckbox, customList } = notificationUIElements;
+
+    const {
+      notificationsCheckbox,
+      soundCheckbox,
+      visualCheckbox,
+      oneMinCheckbox,
+      fiveMinCheckbox,
+      endCheckbox,
+      customInput,
+      addCustomBtn,
+      customList
+    } = notificationUIElements;
+    const notificationsEnabled = !notificationMuted;
+
+    notificationsCheckbox.checked = notificationsEnabled;
+    soundCheckbox.checked = notificationSoundsEnabled;
+    visualCheckbox.checked = notificationVisualAlertsEnabled;
     oneMinCheckbox.checked = notificationTimes.includes(1);
     fiveMinCheckbox.checked = notificationTimes.includes(5);
     endCheckbox.checked = notifyEnd;
+
+    [soundCheckbox, visualCheckbox, oneMinCheckbox, fiveMinCheckbox, endCheckbox, customInput, addCustomBtn]
+      .forEach((control) => {
+        control.disabled = !notificationsEnabled;
+      });
+
     const customTimes = notificationTimes.filter((t) => t !== 1 && t !== 5);
-    customList.innerHTML = '';
-    customTimes.sort((a, b) => a - b).forEach((t) => {
+    customList.replaceChildren();
+    customTimes.forEach((t) => {
       const chip = document.createElement('span');
       chip.className = 'custom-notify-chip';
-      chip.textContent = `${t}min`;
+      chip.textContent = formatReminderLabel(t);
       const removeBtn = document.createElement('button');
       removeBtn.className = 'remove-theme-btn';
       removeBtn.title = 'Remove';
       removeBtn.textContent = '✕';
+      removeBtn.disabled = !notificationsEnabled;
       removeBtn.addEventListener('click', () => {
         notificationTimes = notificationTimes.filter((x) => x !== t);
         persistNotificationSettings();
@@ -883,10 +1037,14 @@
 
   function persistNotificationSettings() {
     const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+    notificationTimes = normalizeNotificationTimes(notificationTimes);
     prefs.notificationMuted = notificationMuted;
-    prefs.notificationTimes = notificationTimes;
+    prefs.notificationSoundsEnabled = notificationSoundsEnabled;
+    prefs.notificationVisualAlertsEnabled = notificationVisualAlertsEnabled;
+    prefs.notificationTimes = notificationTimes.slice();
     prefs.notifyEnd = notifyEnd;
     localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    updateNotificationSummary();
   }
 
   /**
@@ -1036,7 +1194,7 @@
     const previous = audioGenreSelectEl.value || audioGenre || 'none';
 
     // Clear existing children
-    audioGenreSelectEl.innerHTML = '';
+    audioGenreSelectEl.replaceChildren();
 
     // Add one <option> per genre
     Object.keys(audioLibrary).sort().forEach(key => {
@@ -1233,12 +1391,12 @@
     // Only display tasks that are starred and not completed
     const flagged = tasks.filter((t) => t.starred && !t.done);
     if (flagged.length === 0) {
-      flaggedTasksDisplayEl.innerHTML = '';
+      flaggedTasksDisplayEl.replaceChildren();
       flaggedTasksDisplayEl.classList.add('hidden');
       return;
     }
     flaggedTasksDisplayEl.classList.remove('hidden');
-    flaggedTasksDisplayEl.innerHTML = '';
+    flaggedTasksDisplayEl.replaceChildren();
     flagged.forEach((task) => {
       const chip = document.createElement('div');
       chip.className = 'flag-chip';
@@ -1308,8 +1466,8 @@
         isRunning = false;
         handleSessionEnd();
       }
-      let mins = remainingTime / 60
-      if (mins in notificationTimes) {
+      const mins = remainingTime / 60;
+      if (Number.isInteger(mins) && notificationTimes.includes(mins)) {
         sendNotification(
           `${currentSessionType} ending in ${mins} minute${mins === 1 ? '' : 's'}!`,
           currentSessionType === SESSION.WORK ? 'Prepare to rest soon.' : 'Get ready to work.'
@@ -1411,9 +1569,8 @@
     getChimeDuration(chimeEl).then((total) => {
       let playDuration = (notify_type === "short") ? total / 2 : total;
 
-      if (notificationMuted) {
-        // If muted, don't play but still respect the timing for toast
-        setTimeout(onEnded, playDuration * 1000);
+      if (notificationMuted || !notificationSoundsEnabled) {
+        onEnded();
         return;
       }
 
@@ -1463,6 +1620,8 @@
 
   // Send a notification if no other notification is active
   function sendNotification(title, body, notify_type = "short") {
+    if (notificationMuted || (!notificationSoundsEnabled && !notificationVisualAlertsEnabled)) return;
+
     if (isNotificationActive) {
       console.warn("Notification ignored - one already running.");
       return;
@@ -1472,19 +1631,24 @@
     const chimeEl = document.getElementById("notification-sound");
     getChimeDuration(chimeEl).then((total) => {
       let playDuration = (notify_type === "short") ? total / 2 : total;
+      const releaseNotification = () => {
+        isNotificationActive = false;
+      };
 
-      // Play chime and show toast, toast always for playDuration ms
-      playChime({
-        notify_type,
-        chimeEl,
-        onEnded: () => {
-          isNotificationActive = false;
-        }
-      });
+      if (notificationSoundsEnabled) {
+        playChime({
+          notify_type,
+          chimeEl,
+          onEnded: releaseNotification
+        });
+      } else {
+        setTimeout(releaseNotification, playDuration * 1000);
+      }
+
+      if (!notificationVisualAlertsEnabled) return;
 
       showToast(`${title}: ${body}`, playDuration * 1000);
 
-      // Native notification attempt
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification(title, {
@@ -1516,6 +1680,12 @@
   // Toggle settings panel visibility
   function openSettings() { togglePanel('settings'); }
   function closeSettings() { hidePanel('settings'); }
+  function openNotifications() { togglePanel('notifications'); }
+  function backToSettingsFromNotifications() {
+    hidePanel('notifications');
+    showPanel('settings');
+  }
+  function closeNotifications() { hidePanel('notifications'); }
 
   // Postpone the current break by adding 5 minutes; can be used only once per break
   function postponeBreak() {
@@ -1658,7 +1828,7 @@
   function updateTasksList() {
     if (!tasksListEl) return;
     // Clear existing list
-    tasksListEl.innerHTML = '';
+    tasksListEl.replaceChildren();
     // Render each task in its current order (no sorting) and attach drag‑and‑drop handlers
     tasks.forEach((task, index) => {
       const li = document.createElement('li');
@@ -1826,18 +1996,28 @@
     sessionTotalTime = null;
   }
 
+  function appendHistoryCells(li, label, detail) {
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = label;
+    const detailSpan = document.createElement('span');
+    detailSpan.textContent = detail;
+    li.appendChild(labelSpan);
+    li.appendChild(detailSpan);
+  }
+
   // Render history list into history panel
   function updateHistoryDisplay() {
     if (!historyListEl) return;
-    historyListEl.innerHTML = '';
+    historyListEl.replaceChildren();
     history.forEach((item) => {
       const li = document.createElement('li');
       // Distinguish between session entries and task events
       if (item.type === 'Task') {
         const date = new Date(item.timestamp);
         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        // Show action (Added/Completed/Deleted) and task text
-        li.innerHTML = `<span>${item.action} task</span><span>${item.text} @ ${timeStr}</span>`;
+        const action = typeof item.action === 'string' ? item.action : 'Updated';
+        const text = typeof item.text === 'string' ? item.text : '';
+        appendHistoryCells(li, `${action} task`, `${text} @ ${timeStr}`);
       } else {
         // Format start and end times to local time strings
         const startDate = new Date(item.start);
@@ -1849,7 +2029,8 @@
         const durationMinutes = Math.floor(totalSeconds / 60);
         const durationSeconds = totalSeconds % 60;
         const durationStr = `${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`;
-        li.innerHTML = `<span>${item.type}</span><span>${startStr}–${endStr} (${durationStr})</span>`;
+        const type = typeof item.type === 'string' ? item.type : 'Session';
+        appendHistoryCells(li, type, `${startStr}–${endStr} (${durationStr})`);
       }
       historyListEl.appendChild(li);
     });
@@ -1965,6 +2146,8 @@
 
   // Request notification permission on load
   function requestNotificationPermission() {
+    if (notificationMuted || !notificationVisualAlertsEnabled) return;
+
     // Ask for notification permission only once. If permission is default and we
     // haven't requested before, prompt the user and store a flag. Otherwise,
     // do nothing.
@@ -2134,6 +2317,9 @@
     // Stats button and close button
     if (statsButtonEl) statsButtonEl.addEventListener('click', openStats);
     if (closeStatsEl) closeStatsEl.addEventListener('click', closeStats);
+    if (notificationSettingsButtonEl) notificationSettingsButtonEl.addEventListener('click', openNotifications);
+    if (backNotificationsEl) backNotificationsEl.addEventListener('click', backToSettingsFromNotifications);
+    if (closeNotificationsEl) closeNotificationsEl.addEventListener('click', closeNotifications);
   }
 
   // Initialise application
