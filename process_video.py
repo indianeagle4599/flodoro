@@ -5,7 +5,7 @@ process_video.py
 
 This utility script demonstrates how one might download a high‑quality video
 from YouTube using ``yt‑dlp`` and then generate a loopable segment for use
-within the Pomodoro application as a calming background. The script relies
+within the Flodoro application as a calming background. The script relies
 on two external tools: ``yt-dlp`` for downloading and ``ffmpeg`` for
 trimming/processing. Both must be installed and available on your system's
 PATH for the script to function correctly.
@@ -22,7 +22,7 @@ Usage::
 This will download the specified video at the best available quality up to
 4K, extract the first ``trim`` seconds (default 60 seconds), and save it
 as ``loop.mp4`` in the given output directory. You can then set the
-``wallpaper-select`` option in the Pomodoro app to use this video file
+``wallpaper-select`` option in the Flodoro app to use this video file
 instead of a static image (further integration required in app.js).
 
 Limitations:
