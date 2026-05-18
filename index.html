@@ -190,21 +190,25 @@
         </div>
       </div>
     </div>
-    <!-- Audio settings panel: selects track, volume and progress -->
+    <!-- Audio settings panel: manages local playlists and playback -->
     <div id="audio-panel" class="audio-panel slideout hidden" role="dialog" aria-modal="true"
       aria-labelledby="audio-title">
       <h2 id="audio-title" class="panel-title">Audio Settings</h2>
       <div class="audio-content">
-        <!-- Genre selection -->
-        <div class="settings-group">
-          <!-- Genre selection -->
-          <div class="settings-group">
-            <label for="audio-genre-select">Audio Playlist</label>
-            <select id="audio-genre-select"><!-- options injected by JS --></select>
+        <div class="settings-group local-audio-group">
+          <label for="local-audio-folder-button">Playlist manager</label>
+          <div class="local-audio-actions">
+            <button id="local-audio-folder-button" class="control-button" type="button">Add folder</button>
+            <button id="clear-local-audio-button" class="control-button hidden" type="button">Clear all</button>
           </div>
-
+          <div id="local-audio-status" class="local-audio-status">Add one or more local music folders.</div>
+          <div id="local-audio-list" class="local-audio-list" aria-live="polite"></div>
+          <input id="local-audio-input" class="hidden" type="file" accept="audio/*" multiple webkitdirectory />
         </div>
-        <!-- Track selection within genre -->
+        <div class="settings-group">
+          <label for="audio-genre-select">Playlist</label>
+          <select id="audio-genre-select"><!-- options injected by JS --></select>
+        </div>
         <div class="settings-group">
           <label for="audio-select">Track</label>
           <select id="audio-select">
@@ -246,7 +250,6 @@
     </div>
   </div>
   <audio id="audio-player" preload="auto"></audio>
-  <script src="audioManifest.js"></script>
   <script src="app.js"></script>
 </body>
 

@@ -5,7 +5,7 @@
 
 `pomodoro-app` is a serverless, local-first Pomodoro timer and task manager for focused work sessions, breaks, ambient audio, lightweight history, and personal workflow tracking.
 
-It is designed as one clean webpage: no backend, no account system, no sync requirement. User preferences, tasks, history, notification settings, and audio choices stay in the browser through `localStorage`.
+It is designed as one clean webpage: no backend, no account system, no sync requirement. User preferences, tasks, history, notification settings, and audio choices stay in the browser. JSON app state uses `localStorage`; local music folder access uses the browser picker and, where supported, an IndexedDB-stored folder handle.
 
 ## Current phase
 
@@ -24,14 +24,13 @@ pomodoro-app/
   index.html                 # single-page app shell and slide-out panels
   app.js                     # timer, tasks, settings, history, audio, notifications
   style.css                  # responsive UI, panels, controls, themes
-  audioManifest.js           # generated audio library manifest
-  update_songs.py            # regenerates audioManifest.js from local music folders
+  update_songs.py            # optional local helper for generating ignored manifests
   process_video.py           # local helper for preparing loopable media
   assets/
     pomodoro-app-logo.png    # README/app logo
     audio/notify.mp3         # notification chime
     demo/                    # optional screenshots/GIFs for README demos
-    music/                   # optional local playlist assets, usually not committed
+    music/                   # ignored local music scratch space
 ```
 
 ## Demo
@@ -69,11 +68,17 @@ The app records session history and task events locally. The History panel shows
 
 History rendering uses DOM nodes and `textContent`; user-entered task text is not injected as HTML.
 
-### 4. Audio playlists
+### 4. Local playlist manager
 
-The Audio panel supports playlist/category selection, track selection, play/pause, previous/next, mute, volume, and progress scrubbing.
+The Audio panel is a local playlist manager. Users add one or more music folders, choose a playlist, choose a track, and use play/pause, previous/next, mute, volume, and progress scrubbing.
 
-`audioManifest.js` is generated from local audio folders. Large music files can stay local and outside git while the manifest maps available tracks for the app.
+Folder behavior:
+- Each selected folder becomes manageable from the Audio panel.
+- If a selected folder contains subfolders, each first-level subfolder becomes a playlist under that folder.
+- Chromium browsers can remember folder handles through IndexedDB and reconnect them on later visits.
+- Other browsers can use the file picker fallback for the current session.
+
+The app does not ship or require music on GitHub Pages. It does not copy MP3s into `localStorage` and does not upload local audio anywhere.
 
 ### 5. Notification settings
 
@@ -109,22 +114,21 @@ Then open:
 http://localhost:8000
 ```
 
-## Audio manifest workflow
+## Local music workflow
 
-When local music folders change, regenerate the manifest:
+Use the Audio panel to add music folders from the browser. On GitHub Pages, the expected flow is:
 
-```bash
-python update_songs.py
-```
+1. Open the app.
+2. Open Audio Settings.
+3. Click **Add folder**.
+4. Choose a local music folder.
+5. Select the generated playlist and track.
 
-Expected result:
-- `audioManifest.js` contains the current playlist/category mapping.
-- Paths match the real folders under `assets/music/`.
-- Missing or renamed folders should be fixed before committing the manifest.
+`audioManifest.js` and `assets/music/` are ignored local scratch paths. They are not part of the deployed app model.
 
 ## Local data model
 
-The app stores data in the browser using `localStorage`:
+The app stores normal app state as JSON in `localStorage`:
 - timer preferences
 - theme preferences
 - notification preferences
@@ -133,7 +137,12 @@ The app stores data in the browser using `localStorage`:
 - session/task history
 - quote of the day
 
-Clearing browser site data clears the app state.
+Local music folder access uses browser APIs instead of storing audio files:
+- Chromium: `showDirectoryPicker()` can grant access to multiple folders, and selected folder handles are stored in IndexedDB for reconnect/restore.
+- Fallback: `<input type="file" webkitdirectory>` loads selected audio files for the current browser session.
+- Runtime playback uses object URLs, which are revoked when a folder is deleted, replaced, or cleared.
+
+Clearing browser site data clears app state and any remembered local folder handle. It does not delete user music files.
 
 ## Keyboard shortcuts
 
@@ -164,8 +173,7 @@ Clearing browser site data clears the app state.
 ## Planned next steps
 
 1. Guard settings parsing so blank or invalid duration fields cannot produce `NaN`.
-2. Decide local-folder playlist flow: browser directory picker, bundled local assets, or both.
-3. Add a manifest validation command for missing audio files and duplicate IDs.
-4. Resolve the native notification icon path referenced by `app.js`.
-5. Decide whether PWA/offline behavior belongs in this serverless version.
-6. Add demo screenshots or a short walkthrough GIF under `assets/demo/`.
+2. Validate the local music picker on GitHub Pages across Chromium and fallback browsers.
+3. Resolve the native notification icon path referenced by `app.js`.
+4. Decide whether PWA/offline behavior belongs in this serverless version.
+5. Add import/export for local app state if cross-device/manual backup becomes useful.

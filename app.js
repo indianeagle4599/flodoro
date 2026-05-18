@@ -117,6 +117,11 @@
   const muteToggleEl = document.getElementById('mute-toggle');
   const audioProgressEl = document.getElementById('audio-progress');
   const audioProgressGroupEl = document.querySelector('.audio-progress-group');
+  const localAudioFolderButtonEl = document.getElementById('local-audio-folder-button');
+  const clearLocalAudioButtonEl = document.getElementById('clear-local-audio-button');
+  const localAudioInputEl = document.getElementById('local-audio-input');
+  const localAudioStatusEl = document.getElementById('local-audio-status');
+  const localAudioListEl = document.getElementById('local-audio-list');
   const colorPickerEl = document.getElementById('color-picker');
   const themePresetSelectEl = document.getElementById('theme-preset-select');
   const tasksInputEl = document.getElementById('tasks-input');
@@ -161,6 +166,69 @@
   const themeQuoteDisplayEl = document.getElementById('theme-quote-display');
   // Container where notification settings UI will be injected
   const notificationSettingsContainerEl = document.getElementById('notification-settings-container');
+
+  const STORAGE_KEYS = {
+    preferences: 'pomodoroPreferences',
+    tasks: 'pomodoroTasks',
+    history: 'pomodoroHistory',
+    themeQuote: 'pomodoroThemeQuote',
+    notificationPermissionRequested: 'notificationPermissionRequested'
+  };
+
+  function readStorageValue(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn(`Failed to read ${key}; using fallback.`, e);
+      return null;
+    }
+  }
+
+  function writeStorageValue(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn(`Failed to write ${key}.`, e);
+    }
+  }
+
+  function removeStorageValue(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn(`Failed to remove ${key}.`, e);
+    }
+  }
+
+  function readStorageJson(key, fallback) {
+    try {
+      const raw = readStorageValue(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.warn(`Failed to parse ${key}; using fallback.`, e);
+      return fallback;
+    }
+  }
+
+  function writeStorageJson(key, value) {
+    writeStorageValue(key, JSON.stringify(value));
+  }
+
+  function readStoredPreferences() {
+    return readStorageJson(STORAGE_KEYS.preferences, {});
+  }
+
+  function writeStoredPreferences(preferences) {
+    writeStorageJson(STORAGE_KEYS.preferences, preferences);
+  }
+
+  function updateStoredPreferences(patch) {
+    const prefs = readStoredPreferences();
+    const cleanPatch = Object.fromEntries(
+      Object.entries(patch).filter(([, value]) => value !== undefined)
+    );
+    writeStoredPreferences({ ...prefs, ...cleanPatch });
+  }
 
   /* ---------------------------------------------------------------------------
  * CENTRAL PANEL MANAGER – one source of truth for open/close behaviour
@@ -265,11 +333,577 @@
     }
   }
 
-  // Map audio track identifiers to actual URLs (local or remote)
-  const audioSources = audioManifest?.audioSources ?? {};
-  const audioLibrary = audioManifest?.audioLibrary ?? {};
-  console.log('Audio sources and library loaded:', audioSources, audioLibrary);
-  populateGenreSelect();
+  // Map audio track identifiers to object URLs from user-picked local folders.
+  const builtInAudioSources = {};
+  const builtInAudioLibrary = {};
+  let audioSources = {};
+  let audioLibrary = {};
+  let localAudioFolders = [];
+
+  const LOCAL_AUDIO_DB = {
+    name: 'pomodoroLocalAudio',
+    version: 1,
+    store: 'handles',
+    directoryListKey: 'musicDirectories',
+    legacyDirectoryKey: 'musicDirectory'
+  };
+  const AUDIO_FILE_RE = /\.(mp3|wav|ogg|m4a|aac|flac|opus|webm)$/i;
+
+  function cloneAudioLibrary(library) {
+    return Object.fromEntries(
+      Object.entries(library || {}).map(([name, tracks]) => [
+        name,
+        Array.isArray(tracks) ? tracks.map((track) => ({ ...track })) : []
+      ])
+    );
+  }
+
+  function resolveIdbRequest(request) {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function normalizeStorageId(value) {
+    const normalized = String(value || 'music')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return normalized || 'music';
+  }
+
+  function createLocalAudioFolderId(name) {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    return `${normalizeStorageId(name)}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function openLocalAudioDb() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) {
+        reject(new Error('IndexedDB is not available.'));
+        return;
+      }
+
+      const request = indexedDB.open(LOCAL_AUDIO_DB.name, LOCAL_AUDIO_DB.version);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(LOCAL_AUDIO_DB.store)) {
+          request.result.createObjectStore(LOCAL_AUDIO_DB.store);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function withLocalAudioStore(mode, callback) {
+    return openLocalAudioDb().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(LOCAL_AUDIO_DB.store, mode);
+      const store = tx.objectStore(LOCAL_AUDIO_DB.store);
+      let callbackResult;
+      try {
+        callbackResult = callback(store);
+      } catch (error) {
+        try {
+          tx.abort();
+        } catch (abortError) {
+          // Transaction may already be inactive.
+        }
+        db.close();
+        reject(error);
+        return;
+      }
+      tx.oncomplete = () => {
+        db.close();
+        resolve(callbackResult);
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+      tx.onabort = () => {
+        db.close();
+        reject(tx.error || new Error('Local audio storage transaction aborted.'));
+      };
+    }));
+  }
+
+  function getStoredLocalAudioFolderRecords() {
+    return withLocalAudioStore('readonly', (store) => {
+      const recordsRequest = store.get(LOCAL_AUDIO_DB.directoryListKey);
+      const legacyRequest = store.get(LOCAL_AUDIO_DB.legacyDirectoryKey);
+      return Promise.all([
+        resolveIdbRequest(recordsRequest),
+        resolveIdbRequest(legacyRequest)
+      ]).then(([records, legacyHandle]) => {
+        if (Array.isArray(records)) {
+          return records.filter((record) => record?.handle);
+        }
+        if (legacyHandle) {
+          return [{
+            id: `legacy-${normalizeStorageId(legacyHandle.name)}`,
+            name: legacyHandle.name,
+            handle: legacyHandle
+          }];
+        }
+        return [];
+      });
+    }).catch((error) => {
+      console.warn('Could not read local audio folder handles.', error);
+      return [];
+    });
+  }
+
+  function persistLocalAudioFolderRecords() {
+    const records = localAudioFolders
+      .filter((folder) => folder.persistent && folder.handle)
+      .map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        handle: folder.handle
+      }));
+
+    return withLocalAudioStore('readwrite', (store) => {
+      store.put(records, LOCAL_AUDIO_DB.directoryListKey);
+      store.delete(LOCAL_AUDIO_DB.legacyDirectoryKey);
+    }).catch((error) => {
+      console.warn('Could not persist local audio folders.', error);
+    });
+  }
+
+  function clearStoredLocalAudioFolderRecords() {
+    return withLocalAudioStore('readwrite', (store) => {
+      store.delete(LOCAL_AUDIO_DB.directoryListKey);
+      store.delete(LOCAL_AUDIO_DB.legacyDirectoryKey);
+    }).catch((error) => {
+      console.warn('Could not clear local audio folder handles.', error);
+    });
+  }
+
+  function countLocalAudioPlaylists() {
+    return localAudioFolders.reduce((count, folder) => count + folder.playlistNames.length, 0);
+  }
+
+  function countLocalAudioTracks() {
+    return localAudioFolders.reduce((count, folder) => count + folder.trackCount, 0);
+  }
+
+  function formatCount(value, singular, plural = `${singular}s`) {
+    return `${value} ${value === 1 ? singular : plural}`;
+  }
+
+  function updateLocalAudioStatus(message = null) {
+    if (localAudioStatusEl) {
+      if (message) {
+        localAudioStatusEl.textContent = message;
+      } else if (localAudioFolders.length > 0) {
+        localAudioStatusEl.textContent = `${formatCount(localAudioFolders.length, 'folder')}, ${formatCount(countLocalAudioPlaylists(), 'playlist')}, ${formatCount(countLocalAudioTracks(), 'track')}.`;
+      } else {
+        localAudioStatusEl.textContent = 'Add one or more local music folders.';
+      }
+    }
+
+    if (clearLocalAudioButtonEl) {
+      clearLocalAudioButtonEl.classList.toggle('hidden', localAudioFolders.length === 0);
+    }
+  }
+
+  function revokeFolderObjectUrls(folder) {
+    (folder.objectUrls || []).forEach((url) => URL.revokeObjectURL(url));
+  }
+
+  function revokeAllLocalAudioObjectUrls() {
+    localAudioFolders.forEach(revokeFolderObjectUrls);
+  }
+
+  function isAudioFile(file) {
+    return file && (file.type.startsWith('audio/') || AUDIO_FILE_RE.test(file.name));
+  }
+
+  function stripAudioExtension(fileName) {
+    return fileName.replace(AUDIO_FILE_RE, '').trim() || fileName;
+  }
+
+  function buildLocalAudioLibrary(fileEntries, sourceName, folderId) {
+    const localSources = {};
+    const localLibrary = {};
+    const objectUrls = [];
+    let trackCount = 0;
+
+    fileEntries.forEach(({ file, path }) => {
+      if (!isAudioFile(file)) return;
+      const safePath = path || file.name;
+      const parts = safePath.split('/').filter(Boolean);
+      const fileName = parts[parts.length - 1] || file.name;
+      const playlistSource = parts.length > 1 ? parts[0] : sourceName;
+      const playlistName = parts.length > 1 ? `${sourceName} / ${playlistSource}` : sourceName;
+      const id = `local:${folderId}:${safePath}`;
+      const objectUrl = URL.createObjectURL(file);
+      objectUrls.push(objectUrl);
+      localSources[id] = objectUrl;
+      if (!localLibrary[playlistName]) localLibrary[playlistName] = [];
+      localLibrary[playlistName].push({
+        id,
+        name: stripAudioExtension(fileName),
+        local: true,
+        folderId
+      });
+      trackCount += 1;
+    });
+
+    Object.values(localLibrary).forEach((tracks) => {
+      tracks.sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    return {
+      sources: localSources,
+      library: localLibrary,
+      objectUrls,
+      playlistNames: Object.keys(localLibrary).sort(),
+      trackCount
+    };
+  }
+
+  function upsertLocalAudioFolder(folder) {
+    const existingIndex = localAudioFolders.findIndex((item) => item.id === folder.id);
+    if (existingIndex >= 0) {
+      revokeFolderObjectUrls(localAudioFolders[existingIndex]);
+      localAudioFolders.splice(existingIndex, 1, folder);
+    } else {
+      localAudioFolders.push(folder);
+    }
+    localAudioFolders.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function rebuildAudioLibrary({ persist = false, preferredGenre = null, preferredTrackId = null } = {}) {
+    audioSources = { ...builtInAudioSources };
+    audioLibrary = cloneAudioLibrary(builtInAudioLibrary);
+
+    localAudioFolders.forEach((folder) => {
+      Object.assign(audioSources, folder.sources);
+      Object.entries(folder.library).forEach(([playlistName, tracks]) => {
+        audioLibrary[playlistName] = tracks;
+      });
+    });
+
+    renderLocalAudioManager();
+    updateLocalAudioStatus();
+    populateGenreSelect({ persist, preferredGenre, preferredTrackId });
+  }
+
+  function renderLocalAudioManager() {
+    if (!localAudioListEl) return;
+    localAudioListEl.replaceChildren();
+
+    localAudioFolders.forEach((folder) => {
+      const row = document.createElement('div');
+      row.className = 'local-audio-item';
+
+      const details = document.createElement('div');
+      details.className = 'local-audio-item-details';
+
+      const title = document.createElement('div');
+      title.className = 'local-audio-item-title';
+      title.textContent = folder.name;
+
+      const meta = document.createElement('div');
+      meta.className = 'local-audio-item-meta';
+      const parts = [
+        formatCount(folder.playlistNames.length, 'playlist'),
+        formatCount(folder.trackCount, 'track')
+      ];
+      if (folder.needsPermission) parts.push('reconnect needed');
+      if (folder.sessionOnly) parts.push('this session only');
+      meta.textContent = parts.join(' · ');
+
+      details.append(title, meta);
+      row.appendChild(details);
+
+      if (folder.needsPermission && folder.handle) {
+        const reconnectBtn = document.createElement('button');
+        reconnectBtn.className = 'local-audio-link-button';
+        reconnectBtn.type = 'button';
+        reconnectBtn.textContent = 'Reconnect';
+        reconnectBtn.addEventListener('click', () => reconnectLocalAudioFolder(folder.id));
+        row.appendChild(reconnectBtn);
+      }
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'local-audio-delete-button';
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', () => removeLocalAudioFolder(folder.id));
+      row.appendChild(deleteBtn);
+
+      localAudioListEl.appendChild(row);
+    });
+  }
+
+  async function findLocalAudioFolderByHandle(handle) {
+    if (!handle?.isSameEntry) return null;
+    for (const folder of localAudioFolders) {
+      if (!folder.handle?.isSameEntry) continue;
+      try {
+        if (await handle.isSameEntry(folder.handle)) return folder;
+      } catch (error) {
+        // Fall through and treat it as a different folder.
+      }
+    }
+    return null;
+  }
+
+  async function collectAudioFilesFromDirectory(handle, parentParts = []) {
+    const entries = [];
+    for await (const [name, child] of handle.entries()) {
+      if (child.kind === 'directory') {
+        entries.push(...await collectAudioFilesFromDirectory(child, [...parentParts, name]));
+      } else if (child.kind === 'file') {
+        const file = await child.getFile();
+        entries.push({ file, path: [...parentParts, name].join('/') });
+      }
+    }
+    return entries;
+  }
+
+  function loadLocalAudioEntries(fileEntries, {
+    folderId,
+    folderName,
+    handle = null,
+    persistent = false,
+    sessionOnly = false,
+    needsPermission = false,
+    preferredPlaylist = null,
+    preferredTrack = null
+  }) {
+    const built = buildLocalAudioLibrary(fileEntries, folderName, folderId);
+    if (built.trackCount === 0) {
+      updateLocalAudioStatus(`No supported audio files found in ${folderName}.`);
+      return false;
+    }
+
+    const folder = {
+      id: folderId,
+      name: folderName,
+      handle,
+      persistent,
+      sessionOnly,
+      needsPermission,
+      sources: built.sources,
+      library: built.library,
+      objectUrls: built.objectUrls,
+      playlistNames: built.playlistNames,
+      trackCount: built.trackCount
+    };
+
+    upsertLocalAudioFolder(folder);
+    rebuildAudioLibrary({
+      persist: false,
+      preferredGenre: preferredPlaylist,
+      preferredTrackId: preferredTrack
+    });
+    updateStoredPreferences({
+      audioGenre: audioGenreSelectEl ? audioGenreSelectEl.value : DEFAULTS.audioGenre,
+      audioTrack: audioSelectEl ? audioSelectEl.value : DEFAULTS.audioTrack
+    });
+    return true;
+  }
+
+  async function loadLocalAudioDirectory(handle, {
+    folderId = null,
+    sourceName = null,
+    persistHandle = false,
+    fromRestore = false,
+    preferredPlaylist = null,
+    preferredTrack = null
+  } = {}) {
+    if (!handle) return false;
+    const existing = folderId ? localAudioFolders.find((folder) => folder.id === folderId) : await findLocalAudioFolderByHandle(handle);
+    const id = folderId || existing?.id || createLocalAudioFolderId(handle.name);
+    const name = sourceName || handle.name;
+    updateLocalAudioStatus(`Loading ${name}...`);
+
+    let fileEntries;
+    try {
+      fileEntries = await collectAudioFilesFromDirectory(handle);
+    } catch (error) {
+      updateLocalAudioStatus(`Could not read ${name}.`);
+      throw error;
+    }
+
+    const loaded = loadLocalAudioEntries(fileEntries, {
+      folderId: id,
+      folderName: name,
+      handle,
+      persistent: persistHandle || fromRestore || !!existing?.persistent,
+      sessionOnly: false,
+      preferredPlaylist,
+      preferredTrack
+    });
+
+    if (loaded && (persistHandle || fromRestore || existing?.persistent)) {
+      await persistLocalAudioFolderRecords();
+    }
+    return loaded;
+  }
+
+  async function restoreLocalAudioDirectories() {
+    const records = await getStoredLocalAudioFolderRecords();
+    if (records.length === 0) {
+      rebuildAudioLibrary({ persist: false });
+      return;
+    }
+
+    const prefs = readStoredPreferences();
+    let restored = 0;
+    for (const record of records) {
+      const handle = record.handle;
+      if (!handle) continue;
+      let permission = 'denied';
+      try {
+        permission = await handle.queryPermission({ mode: 'read' });
+      } catch (e) {
+        permission = 'denied';
+      }
+
+      if (permission === 'granted') {
+        const loaded = await loadLocalAudioDirectory(handle, {
+          folderId: record.id,
+          sourceName: record.name || handle.name,
+          fromRestore: true,
+          preferredPlaylist: prefs.audioGenre,
+          preferredTrack: prefs.audioTrack
+        });
+        if (loaded) restored += 1;
+      } else {
+        upsertLocalAudioFolder({
+          id: record.id,
+          name: record.name || handle.name,
+          handle,
+          persistent: true,
+          sessionOnly: false,
+          needsPermission: true,
+          sources: {},
+          library: {},
+          objectUrls: [],
+          playlistNames: [],
+          trackCount: 0
+        });
+      }
+    }
+
+    rebuildAudioLibrary({
+      persist: false,
+      preferredGenre: prefs.audioGenre,
+      preferredTrackId: prefs.audioTrack
+    });
+    updateLocalAudioStatus(restored > 0 ? null : 'Saved folders need reconnecting.');
+    await persistLocalAudioFolderRecords();
+  }
+
+  async function chooseLocalAudioFolder() {
+    if ('showDirectoryPicker' in window) {
+      try {
+        const handle = await window.showDirectoryPicker({ mode: 'read' });
+        const existing = await findLocalAudioFolderByHandle(handle);
+        await loadLocalAudioDirectory(handle, {
+          folderId: existing?.id || null,
+          persistHandle: true
+        });
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          console.warn('Local audio folder selection failed.', error);
+          updateLocalAudioStatus('Could not load that folder.');
+        }
+      }
+      return;
+    }
+
+    if (localAudioInputEl) {
+      localAudioInputEl.value = '';
+      localAudioInputEl.click();
+    }
+  }
+
+  function normalizePickedFilePath(file) {
+    const rawPath = file.webkitRelativePath || file.name;
+    const parts = rawPath.split('/').filter(Boolean);
+    return parts.length > 1 ? parts.slice(1).join('/') : parts.join('/');
+  }
+
+  function loadPickedLocalAudioFiles(files) {
+    const fileList = Array.from(files || []);
+    if (fileList.length === 0) return;
+    const firstPath = fileList[0].webkitRelativePath || '';
+    const folderName = firstPath.split('/').filter(Boolean)[0] || 'Selected files';
+    const entries = fileList.map((file) => ({
+      file,
+      path: normalizePickedFilePath(file)
+    }));
+    const loaded = loadLocalAudioEntries(entries, {
+      folderId: createLocalAudioFolderId(folderName),
+      folderName,
+      sessionOnly: true
+    });
+    if (loaded) updateLocalAudioStatus(`${folderName} loaded for this browser session.`);
+  }
+
+  async function reconnectLocalAudioFolder(folderId) {
+    const folder = localAudioFolders.find((item) => item.id === folderId);
+    if (!folder?.handle?.requestPermission) return;
+    try {
+      const permission = await folder.handle.requestPermission({ mode: 'read' });
+      if (permission === 'granted') {
+        const prefs = readStoredPreferences();
+        await loadLocalAudioDirectory(folder.handle, {
+          folderId: folder.id,
+          sourceName: folder.name,
+          fromRestore: true,
+          preferredPlaylist: prefs.audioGenre,
+          preferredTrack: prefs.audioTrack
+        });
+      } else {
+        updateLocalAudioStatus(`${folder.name} still needs permission.`);
+      }
+    } catch (error) {
+      console.warn('Local audio reconnect failed.', error);
+      updateLocalAudioStatus(`Could not reconnect ${folder.name}.`);
+    }
+  }
+
+  async function removeLocalAudioFolder(folderId) {
+    const folder = localAudioFolders.find((item) => item.id === folderId);
+    if (!folder) return;
+    const removedCurrentTrack = audioPlayerEl.dataset.trackId && folder.sources[audioPlayerEl.dataset.trackId];
+    if (removedCurrentTrack) {
+      audioIsPlaying = false;
+      applyAudioTrack('none');
+    }
+    revokeFolderObjectUrls(folder);
+    localAudioFolders = localAudioFolders.filter((item) => item.id !== folderId);
+    await persistLocalAudioFolderRecords();
+    rebuildAudioLibrary({ persist: false });
+    updateStoredPreferences({
+      audioGenre: audioGenreSelectEl ? audioGenreSelectEl.value : DEFAULTS.audioGenre,
+      audioTrack: audioSelectEl ? audioSelectEl.value : DEFAULTS.audioTrack
+    });
+  }
+
+  async function clearLocalAudioAccess() {
+    revokeAllLocalAudioObjectUrls();
+    localAudioFolders = [];
+    await clearStoredLocalAudioFolderRecords();
+    audioIsPlaying = false;
+    applyAudioTrack('none');
+    rebuildAudioLibrary({ persist: false, preferredGenre: 'none', preferredTrackId: 'none' });
+    updateStoredPreferences({
+      audioGenre: 'none',
+      audioTrack: 'none'
+    });
+    updateLocalAudioStatus('Local playlists cleared.');
+  }
+
+  console.log('Local audio library initialized.');
+  rebuildAudioLibrary({ persist: false });
 
   /**
    * Compute and display statistics summarising completed sessions and task events.
@@ -315,7 +949,7 @@
    * ensures the timer persists user choices across sessions.
    */
   function loadPreferences() {
-    const stored = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
+    const stored = readStoredPreferences();
     workDuration = parseInt(stored.workDuration || DEFAULTS.workDuration, 10);
     shortBreakDuration = parseInt(stored.shortBreakDuration || DEFAULTS.shortBreakDuration, 10);
     longBreakDuration = parseInt(stored.longBreakDuration || DEFAULTS.longBreakDuration, 10);
@@ -345,7 +979,7 @@
       ? normalizeNotificationTimes(stored.notificationTimes)
       : [1, 5];
     notifyEnd = typeof stored.notifyEnd === 'boolean' ? stored.notifyEnd : true;
-    themeQuote = localStorage.getItem('pomodoroThemeQuote') || null;
+    themeQuote = readStorageValue(STORAGE_KEYS.themeQuote) || null;
     // Tasks are loaded separately via loadTasks()
     currentTaskIndex = 0;
 
@@ -375,7 +1009,7 @@
     // Apply background gradient based on stored colours
     applyBackgroundGradient();
     // Populate audio select options for stored genre
-    updateAudioSelectOptions();
+    updateAudioSelectOptions({ persist: false, preferredTrackId: audioTrack });
 
     remainingTime = workDuration;
     updateDisplay();
@@ -439,7 +1073,7 @@
       notificationTimes: notificationTimes.slice(),
       notifyEnd: notifyEnd
     };
-    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    writeStoredPreferences(prefs);
 
     // Reload only if the track actually changed
     if (audioPlayerEl.dataset.trackId !== audioTrack) {
@@ -461,14 +1095,12 @@
 
   // Apply the chosen audio track
   function applyAudioTrack(trackId) {
-    // Always clear any previous src first
-    audioPlayerEl.pause();
-    audioPlayerEl.removeAttribute('src');
-
-    // Hide progress bar by default
     if (audioProgressGroupEl) audioProgressGroupEl.classList.add('hidden');
 
     if (trackId === 'none') {
+      audioPlayerEl.pause();
+      audioPlayerEl.removeAttribute('src');
+      delete audioPlayerEl.dataset.trackId;
       refreshAudioIcons();
       return;
     }
@@ -476,26 +1108,29 @@
     const src = audioSources[trackId];
     if (!src) {
       console.warn('No audio source for', trackId);
+      audioPlayerEl.pause();
+      audioPlayerEl.removeAttribute('src');
+      delete audioPlayerEl.dataset.trackId;
       refreshAudioIcons();
       return;
     }
 
-    /* load the file only when we switch to a different track */
-    if (audioPlayerEl.src !== src) {
+    if (audioPlayerEl.dataset.trackId !== trackId) {
+      audioPlayerEl.pause();
+      audioPlayerEl.removeAttribute('src');
       audioPlayerEl.src = src;
-      audioPlayerEl.currentTime = 0;            // go to the start
-      /* do **not** call .load() — it can truncate long, VBR MP3s */
+      audioPlayerEl.currentTime = 0;
+      // Do not call .load(); it can truncate long VBR MP3s in some browsers.
     }
 
     if (audioProgressGroupEl) audioProgressGroupEl.classList.remove('hidden');
 
-    // Honour the last user intention
     if (audioIsPlaying) {
       audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
     }
 
-    refreshAudioIcons();
     audioPlayerEl.dataset.trackId = trackId;
+    refreshAudioIcons();
   }
 
   function duckMusic(enable) {
@@ -724,9 +1359,9 @@
 
   function persistThemeQuote() {
     if (themeQuote) {
-      localStorage.setItem('pomodoroThemeQuote', themeQuote);
+      writeStorageValue(STORAGE_KEYS.themeQuote, themeQuote);
     } else {
-      localStorage.removeItem('pomodoroThemeQuote');
+      removeStorageValue(STORAGE_KEYS.themeQuote);
     }
   }
 
@@ -1036,14 +1671,14 @@
   }
 
   function persistNotificationSettings() {
-    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
     notificationTimes = normalizeNotificationTimes(notificationTimes);
-    prefs.notificationMuted = notificationMuted;
-    prefs.notificationSoundsEnabled = notificationSoundsEnabled;
-    prefs.notificationVisualAlertsEnabled = notificationVisualAlertsEnabled;
-    prefs.notificationTimes = notificationTimes.slice();
-    prefs.notifyEnd = notifyEnd;
-    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    updateStoredPreferences({
+      notificationMuted,
+      notificationSoundsEnabled,
+      notificationVisualAlertsEnabled,
+      notificationTimes: notificationTimes.slice(),
+      notifyEnd
+    });
     updateNotificationSummary();
   }
 
@@ -1187,31 +1822,36 @@
  * Build the <option> list for #audio-genre-select from AUDIO_LIBRARY keys.
  * Keeps any previously–saved genre if it still exists; otherwise selects the first key.
  */
-  function populateGenreSelect() {
+  function populateGenreSelect({ persist = true, preferredGenre = null, preferredTrackId = null } = {}) {
     if (!audioGenreSelectEl) return;
 
-    // Remember what _was_ selected (from preferences or default)
-    const previous = audioGenreSelectEl.value || audioGenre || 'none';
+    const previous = preferredGenre || audioGenreSelectEl.value || audioGenre || readStoredPreferences().audioGenre || 'none';
+    const playlistNames = Object.keys(audioLibrary).sort();
 
-    // Clear existing children
     audioGenreSelectEl.replaceChildren();
 
-    // Add one <option> per genre
-    Object.keys(audioLibrary).sort().forEach(key => {
+    if (playlistNames.length === 0) {
       const opt = document.createElement('option');
-      opt.value = key;
-      opt.textContent = key.replace(/(^|\s)\w/g, c => c.toUpperCase()); // simple prettify
+      opt.value = 'none';
+      opt.textContent = 'No playlists added';
       audioGenreSelectEl.appendChild(opt);
-    });
-
-    // Pick the remembered genre if still valid, else fall back to the first entry
-    if ([...audioGenreSelectEl.options].some(o => o.value === previous)) {
-      audioGenreSelectEl.value = previous;
+    } else {
+      playlistNames.forEach((key) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key.replace(/(^|\s)\w/g, (c) => c.toUpperCase());
+        audioGenreSelectEl.appendChild(opt);
+      });
     }
-    audioGenre = audioGenreSelectEl.value;     // keep state in sync
 
-    // Now that we have a valid genre, build the track list
-    updateAudioSelectOptions();
+    if ([...audioGenreSelectEl.options].some((option) => option.value === previous)) {
+      audioGenreSelectEl.value = previous;
+    } else {
+      audioGenreSelectEl.value = playlistNames[0] || 'none';
+    }
+    audioGenre = audioGenreSelectEl.value;
+
+    updateAudioSelectOptions({ persist, preferredTrackId });
   }
 
   /**
@@ -1221,55 +1861,51 @@
    * Tracks are drawn from the audioLibrary. Always includes a
    * 'None' option.
    */
-  function updateAudioSelectOptions() {
+  function updateAudioSelectOptions({ persist = true, preferredTrackId = null } = {}) {
     if (!audioSelectEl || !audioGenreSelectEl) return;
     const genre = audioGenreSelectEl.value;
+    const previousTrackId = preferredTrackId || audioSelectEl.value || readStoredPreferences().audioTrack || DEFAULTS.audioTrack;
     audioGenre = genre;
-    // Remove existing options
-    while (audioSelectEl.firstChild) {
-      audioSelectEl.removeChild(audioSelectEl.firstChild);
-    }
-    // Add 'None' option
+
+    audioSelectEl.replaceChildren();
+
     const noneOpt = document.createElement('option');
     noneOpt.value = 'none';
     noneOpt.textContent = 'None';
     audioSelectEl.appendChild(noneOpt);
-    // Add tracks for this genre
+
     const list = audioLibrary[genre] || [];
-    list.forEach((track, idx) => {
+    list.forEach((track) => {
       const opt = document.createElement('option');
       opt.value = track.id;
       opt.textContent = track.name;
       audioSelectEl.appendChild(opt);
     });
-    // Select the first track by default if the previous track isn't available
-    if (list.length > 0) {
-      const prevId = audioSelectEl.value;
-      if (list.some(t => t.id === prevId)) {
-        audioSelectEl.value = prevId;
-      } else if (list.length) {
-        audioSelectEl.value = list[0].id;           // fallback only if needed
-      } else {
-        audioSelectEl.value = 'none';
-      }
 
-      // load a new source **only** if it changed
-      if (!audioPlayerEl.src.includes(audioSelectEl.value)) {
-        applyAudioTrack(audioSelectEl.value);
-      }
+    if (list.some((track) => track.id === previousTrackId)) {
+      audioSelectEl.value = previousTrackId;
+    } else if (list.length > 0) {
+      audioSelectEl.value = list[0].id;
     } else {
       audioSelectEl.value = 'none';
-      applyAudioTrack('none');
     }
+
+    if (audioSelectEl.value === 'none') {
+      applyAudioTrack('none');
+    } else if (audioPlayerEl.dataset.trackId !== audioSelectEl.value) {
+      applyAudioTrack(audioSelectEl.value);
+    }
+
     if (audioIsPlaying && audioPlayerEl.paused) {
       audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     }
 
-    // Save genre and track preferences immediately
-    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-    prefs.audioGenre = genre;
-    prefs.audioTrack = audioSelectEl.value;
-    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    if (persist) {
+      updateStoredPreferences({
+        audioGenre: genre,
+        audioTrack: audioSelectEl.value
+      });
+    }
   }
 
   /**
@@ -1320,10 +1956,7 @@
       audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     }
     refreshAudioIcons();
-    // Save preference
-    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-    prefs.audioTrack = newTrack.id;
-    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    updateStoredPreferences({ audioTrack: newTrack.id });
   }
 
   /**
@@ -1346,9 +1979,7 @@
       audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     }
     refreshAudioIcons();
-    const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-    prefs.audioTrack = newTrack.id;
-    localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+    updateStoredPreferences({ audioTrack: newTrack.id });
   }
 
   // Show or hide the audio progress bar depending on whether a track is loaded
@@ -1793,24 +2424,19 @@
   /**
    * History and tasks management
    */
-  // Load tasks from localStorage (pomodoroTasks) and convert to array of objects
+  // Load tasks from storage and normalize legacy string-only entries.
   function loadTasks() {
-    try {
-      const storedTasks = JSON.parse(localStorage.getItem('pomodoroTasks') || '[]');
-      if (Array.isArray(storedTasks)) {
-        tasks = storedTasks.map((t) => {
-          if (typeof t === 'string') return { text: t, done: false, starred: false };
-          // Already an object; ensure starred property exists
-          return {
-            text: t.text || '',
-            done: !!t.done,
-            starred: !!t.starred
-          };
-        });
-      } else {
-        tasks = [];
-      }
-    } catch (e) {
+    const storedTasks = readStorageJson(STORAGE_KEYS.tasks, []);
+    if (Array.isArray(storedTasks)) {
+      tasks = storedTasks.map((t) => {
+        if (typeof t === 'string') return { text: t, done: false, starred: false };
+        return {
+          text: t.text || '',
+          done: !!t.done,
+          starred: !!t.starred
+        };
+      });
+    } else {
       tasks = [];
     }
     currentTaskIndex = 0;
@@ -1819,9 +2445,8 @@
     updateFlaggedTasksDisplay();
   }
 
-  // Save tasks to localStorage
   function saveTasks() {
-    localStorage.setItem('pomodoroTasks', JSON.stringify(tasks));
+    writeStorageJson(STORAGE_KEYS.tasks, tasks);
   }
 
   // Render tasks into the tasks panel list
@@ -1957,23 +2582,14 @@
   function openTasks() { togglePanel('tasks'); }
   function closeTasks() { hidePanel('tasks'); }
 
-  // Load history from localStorage
   function loadHistory() {
-    try {
-      const storedHistory = JSON.parse(localStorage.getItem('pomodoroHistory') || '[]');
-      if (Array.isArray(storedHistory)) {
-        history = storedHistory;
-      } else {
-        history = [];
-      }
-    } catch (e) {
-      history = [];
-    }
+    const storedHistory = readStorageJson(STORAGE_KEYS.history, []);
+    history = Array.isArray(storedHistory) ? storedHistory : [];
     updateHistoryDisplay();
   }
-  // Save history to localStorage
+
   function saveHistory() {
-    localStorage.setItem('pomodoroHistory', JSON.stringify(history));
+    writeStorageJson(STORAGE_KEYS.history, history);
   }
 
   // Record the current session to history if a session is in progress
@@ -2060,8 +2676,13 @@
     if (!audioPlayerEl) return;
     audioIsPlaying = !audioIsPlaying;
     if (audioIsPlaying) {
-      if (!audioPlayerEl.src && audioSelectEl) applyAudioTrack(audioSelectEl.value);
-      audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
+      if (!audioSelectEl || audioSelectEl.value === 'none') {
+        audioIsPlaying = false;
+        refreshAudioIcons();
+        return;
+      }
+      if (!audioPlayerEl.src) applyAudioTrack(audioSelectEl.value);
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     } else {
       audioPlayerEl.pause();
     }
@@ -2153,10 +2774,10 @@
     // do nothing.
     try {
       if ('Notification' in window && Notification.permission === 'default') {
-        const asked = localStorage.getItem('notificationPermissionRequested');
+        const asked = readStorageValue(STORAGE_KEYS.notificationPermissionRequested);
         if (!asked) {
           Notification.requestPermission().finally(() => {
-            localStorage.setItem('notificationPermissionRequested', 'true');
+            writeStorageValue(STORAGE_KEYS.notificationPermissionRequested, 'true');
           });
         }
       }
@@ -2187,6 +2808,11 @@
     if (audioToggleEl) audioToggleEl.addEventListener('click', toggleAudio);
     if (muteToggleEl) muteToggleEl.addEventListener('click', toggleMute);
     if (audioProgressEl) audioProgressEl.addEventListener('input', seekAudio);
+    if (localAudioFolderButtonEl) localAudioFolderButtonEl.addEventListener('click', chooseLocalAudioFolder);
+    if (clearLocalAudioButtonEl) clearLocalAudioButtonEl.addEventListener('click', clearLocalAudioAccess);
+    if (localAudioInputEl) {
+      localAudioInputEl.addEventListener('change', () => loadPickedLocalAudioFiles(localAudioInputEl.files));
+    }
 
     // Auto‑advance when the current track finishes
     audioPlayerEl.addEventListener('ended', () => {
@@ -2211,11 +2837,10 @@
     if (audioSelectEl) audioSelectEl.addEventListener('change', () => {
       const track = audioSelectEl.value;
       applyAudioTrack(track);
-      // Save track and genre immediately
-      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.audioTrack = track;
-      prefs.audioGenre = audioGenreSelectEl ? audioGenreSelectEl.value : prefs.audioGenre;
-      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+      updateStoredPreferences({
+        audioTrack: track,
+        audioGenre: audioGenreSelectEl ? audioGenreSelectEl.value : audioGenre
+      });
     });
     // Audio playback controls
     if (prevTrackEl) prevTrackEl.addEventListener('click', previousTrack);
@@ -2264,49 +2889,37 @@
       // When the user picks a custom colour, set preset to custom
       if (themePresetSelectEl) themePresetSelectEl.value = 'custom';
       applyThemeColor(colorPickerEl.value);
-      // Save updated colour and preset immediately
-      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.baseColor = colorPickerEl.value;
-      prefs.themePreset = 'custom';
-      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+      updateStoredPreferences({
+        baseColor: colorPickerEl.value,
+        themePreset: 'custom'
+      });
     });
     // Colour mode toggle button (light/dark)
     if (colorModeToggleEl) colorModeToggleEl.addEventListener('click', () => {
       toggleColorMode();
-      // Save dark mode preference immediately
-      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.darkMode = darkMode;
-      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+      updateStoredPreferences({ darkMode });
     });
     // Theme preset selection
     if (themePresetSelectEl) themePresetSelectEl.addEventListener('change', () => {
       const preset = themePresetSelectEl.value;
       applyThemePreset(preset);
-      // Save preset and base colour immediately
-      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.themePreset = preset;
-      // If the preset is not custom, update baseColour in preferences to preserve colour across reloads
+      const patch = { themePreset: preset };
       if (preset !== 'custom') {
-        prefs.baseColor = colorPickerEl.value;
+        patch.baseColor = colorPickerEl.value;
       }
-      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+      updateStoredPreferences(patch);
     });
 
     // Background colour pickers for dynamic gradient
     if (bgColor1El) bgColor1El.addEventListener('input', () => {
       bgColor1 = bgColor1El.value;
       applyBackgroundGradient();
-      // Save preferences immediately
-      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.bgColor1 = bgColor1;
-      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+      updateStoredPreferences({ bgColor1 });
     });
     if (bgColor2El) bgColor2El.addEventListener('input', () => {
       bgColor2 = bgColor2El.value;
       applyBackgroundGradient();
-      const prefs = JSON.parse(localStorage.getItem('pomodoroPreferences') || '{}');
-      prefs.bgColor2 = bgColor2;
-      localStorage.setItem('pomodoroPreferences', JSON.stringify(prefs));
+      updateStoredPreferences({ bgColor2 });
     });
     // keyboard support
     document.addEventListener('keydown', handleKeydown);
@@ -2330,7 +2943,11 @@
     updateDisplay();
     updateCurrentTaskDisplay();
     updateAudioProgressVisibility();
-    populateGenreSelect();
+    populateGenreSelect({ persist: false });
+    restoreLocalAudioDirectories().catch((error) => {
+      console.warn('Local audio restore failed.', error);
+      updateLocalAudioStatus();
+    });
   }
 
   // Kick things off when DOM is ready
