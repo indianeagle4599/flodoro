@@ -1,5 +1,5 @@
 /*
- * Stylesheet for the Pomodoro Timer web application
+ * Stylesheet for the Flodoro web application
  *
  * The design focuses on simplicity and minimal distraction, with
  * clean typography and generous spacing. A full‑screen background
@@ -23,12 +23,18 @@
   --border-radius: 12px;
   --input-bg: #374151;
   --input-color: #ffffff;
-
-  /* Semi‑transparent tray background behind header icons; adjusted via JS for dark mode */
-  --header-tray-bg: rgba(255, 255, 255, 0.15);
+  --input-border: transparent;
 
   /* Background used for quote displays; modified by JS for dark/light mode */
   --quote-bg: rgba(0, 0, 0, 0.4);
+
+  /* Translucent surfaces for chips, items, pills, hovers. Flipped by JS for light mode. */
+  --surface-soft: rgba(255, 255, 255, 0.1);
+  --surface-soft-border: rgba(255, 255, 255, 0.12);
+  --surface-strong: rgba(255, 255, 255, 0.22);
+  --panel-border: rgba(255, 255, 255, 0.15);
+  --panel-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --panel-top: 4.25rem;
 }
 
 html,
@@ -69,27 +75,53 @@ body {
 }
 
 /* Ensure the main content sits above the overlay */
-.app-header,
+.app-navbar,
 .main-content,
 .settings-panel {
   position: relative;
   z-index: 1;
 }
 
-/* Header styling */
-.app-header {
+/* Top row: brand title left, icon tray right (no full-width bar chrome) */
+.app-navbar {
   width: 100%;
-  padding: .75rem 1.25rem;
+  padding: 0.75rem 1.25rem;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   box-sizing: border-box;
 }
 
-.app-title {
+/* Brand tray: same fixed dark chrome as the options pill */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.35rem 0.75rem 0.35rem 0.5rem;
+  background: rgba(17, 24, 39, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.navbar-logo {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.navbar-title {
   margin: 0;
-  font-size: var(--font-size-title);
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  white-space: nowrap;
 }
 
 /* Header buttons container groups tasks, history and settings icons */
@@ -98,14 +130,26 @@ body {
   gap: 0.5rem;
 }
 
-/* ---------- header pill tray ---------- */
+/* ---------- header pill tray (always dark chrome, regardless of colour mode) ---------- */
 .header-tray {
   display: flex;
   gap: .5rem;
   padding: .35rem .6rem;
-  background: var(--header-tray-bg);
+  background: rgba(17, 24, 39, 0.82);
   backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.header-tray .icon-button {
+  color: #ffffff;
+}
+
+.header-tray .icon-button:hover {
+  color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .icon-button {
@@ -122,7 +166,7 @@ body {
 
 .icon-button:hover {
   color: var(--color-accent);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
 }
 
 /* Mode toggle styling: displays current and next session types */
@@ -144,7 +188,7 @@ body {
 
 /* Highlight on hover */
 .mode-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   border: 1px solid var(--color-accent);
 }
 
@@ -162,7 +206,7 @@ body {
 
 .mode-sub {
   font-size: 1.25rem;
-  opacity: 0.7;
+  color: var(--color-secondary);
 }
 
 /* Main content area containing timer and controls */
@@ -205,7 +249,7 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   color: var(--color-primary);
   border: none;
   cursor: pointer;
@@ -213,7 +257,7 @@ body {
 }
 
 .time-adjust-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--surface-strong);
 }
 
 /* Controls */
@@ -264,18 +308,19 @@ body {
 .history-panel,
 .audio-panel,
 .stats-panel,
-.notification-panel {
+.notification-panel,
+.playlist-panel {
   position: absolute;
-  top: 4rem;
-  /* below header */
+  top: var(--panel-top);
+  /* below navbar */
   /* horizontal offsets are set individually in specific definitions */
   width: 22rem;
   max-width: 90vw;
   background: var(--panel-bg);
   backdrop-filter: blur(20px);
   border-radius: var(--border-radius);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: var(--panel-shadow);
+  border: 1px solid var(--panel-border);
   padding: 1rem;
   color: var(--color-primary);
   z-index: 2;
@@ -289,7 +334,8 @@ body {
 .history-panel,
 .audio-panel,
 .stats-panel,
-.notification-panel {
+.notification-panel,
+.playlist-panel {
   right: 1.5rem;
 }
 
@@ -349,7 +395,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, .12);
+  background: var(--surface-soft);
   border: none;
   color: var(--color-primary);
   font-size: 1rem;
@@ -358,7 +404,7 @@ body {
 }
 
 .pill-btn:hover {
-  background: rgba(255, 255, 255, .22);
+  background: var(--surface-strong);
 }
 
 .pill-btn.main {
@@ -401,8 +447,8 @@ body {
   align-items: center;
   padding: 0.55rem;
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-soft-border);
 }
 
 .local-audio-item-details {
@@ -436,12 +482,12 @@ body {
 }
 
 .local-audio-link-button {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--surface-soft);
   color: var(--color-primary);
 }
 
 .local-audio-delete-button {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   color: var(--color-secondary);
 }
 
@@ -487,7 +533,7 @@ body {
 .quote-display {
   margin: 1.5rem;
   padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--quote-bg);
   border-radius: var(--border-radius);
   font-style: italic;
   font-size: 0.9rem;
@@ -548,7 +594,8 @@ body {
 }
 
 /* Notification settings: launch row, focused panel controls and reminder chips */
-.notification-launch-row {
+.notification-launch-row,
+.playlist-launch-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -565,8 +612,8 @@ body {
 }
 
 .settings-summary-chip {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-soft-border);
   border-radius: 0.5rem;
   color: var(--color-primary);
   font-size: 0.78rem;
@@ -583,7 +630,8 @@ body {
 }
 
 .notification-content,
-.notification-settings-stack {
+.notification-settings-stack,
+.playlist-content {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -619,8 +667,8 @@ body {
 
 .notification-sub-toggle,
 .notify-timing-option {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-soft-border);
   border-radius: 0.5rem;
   padding: 0.55rem 0.65rem;
 }
@@ -663,7 +711,7 @@ body {
 }
 
 .custom-notify-chip {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   color: var(--color-primary);
   padding: 0.35rem 0.6rem;
   border-radius: 0.5rem;
@@ -673,7 +721,8 @@ body {
   gap: 0.25rem;
 }
 
-.notification-actions {
+.notification-actions,
+.playlist-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -774,8 +823,9 @@ body {
   flex: 1;
   padding: 0.5rem;
   border-radius: var(--border-radius);
-  border: none;
-  border-color: var(--color-accent);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-color);
   font-size: 1rem;
 }
 
@@ -899,7 +949,7 @@ body {
 }
 
 .secondary-controls .icon-button {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   border: none;
   font-size: 0.875rem;
   padding: 0.4rem 0.6rem;
@@ -907,14 +957,14 @@ body {
 }
 
 .secondary-controls .icon-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--surface-strong);
 }
 
 /* Current task display */
 .current-task {
   margin-top: 1rem;
   font-size: 0.875rem;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--quote-bg);
   padding: 0.5rem 0.75rem;
   border-radius: var(--border-radius);
   max-width: 90%;
@@ -944,7 +994,7 @@ body {
 .settings-group select {
   padding: 0.5rem;
   border-radius: var(--border-radius);
-  border: none;
+  border: 1px solid var(--input-border);
   background: var(--input-bg);
   color: var(--input-color);
   font-size: 1rem;
@@ -956,7 +1006,7 @@ body {
 .settings-group input[type="color"] {
   padding: 0.5rem;
   border-radius: var(--border-radius);
-  border: none;
+  border: 1px solid var(--input-border);
   background: var(--input-bg);
   color: var(--input-color);
   font-size: 1rem;
@@ -982,8 +1032,13 @@ body {
     font-size: 4rem;
   }
 
-  .app-title {
-    font-size: 1.75rem;
+  .navbar-title {
+    font-size: 1.15rem;
+  }
+
+  .navbar-logo {
+    width: 1.85rem;
+    height: 1.85rem;
   }
 
   .control-button {
@@ -998,11 +1053,6 @@ body {
 
 /* ===================================================================== */
 /* Additional customisations added for improved UI (July 2025) */
-
-/* Hide the Pomodoro title for a cleaner appearance */
-.app-title {
-  display: none;
-}
 
 /* Rows within settings panel for grouping related inputs */
 .settings-row {
@@ -1045,12 +1095,12 @@ body {
   width: 12rem !important;
   height: 2.5rem !important;
   border-radius: 0.75rem !important;
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: var(--surface-soft) !important;
   color: var(--color-primary) !important;
 }
 
 .time-adjust-btn:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: var(--surface-strong) !important;
 }
 
 /* Add vertical spacing around timer wrapper */
@@ -1098,7 +1148,7 @@ body {
 .pill-btn {
   padding: 2rem;
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   color: var(--color-primary);
   border: none;
   font-size: 1.5rem;
@@ -1112,7 +1162,7 @@ body {
 }
 
 .pill-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--surface-strong);
 }
 
 /* Volume row spacing */
@@ -1137,7 +1187,7 @@ body {
 
 .tasks-list::-webkit-scrollbar-track,
 .history-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   border-radius: 1rem;
 }
 
@@ -1161,7 +1211,7 @@ body {
 .flagged-tasks-display .flag-chip {
   padding: 0.4rem 0.8rem;
   border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
   color: var(--color-primary);
   font-size: 0.9rem;
   display: flex;

@@ -1,5 +1,5 @@
 /*
- * JavaScript logic for the Pomodoro Timer web application.
+ * JavaScript logic for the Flodoro web application.
  *
  * This script manages timer state, session switching, user settings,
  * audio playback, notifications, and user interactions. The goal is
@@ -71,6 +71,7 @@
   let notificationVisualAlertsEnabled = DEFAULTS.notificationVisualAlertsEnabled;
   let notificationTimes = [1, 5];
   let notifyEnd = true;
+  let isNotificationActive = false;
 
   // Quote system state: index of current break quote and user-selected theme quote.
   let currentQuoteIndex = 0;
@@ -95,7 +96,6 @@
   const audioSelectEl = document.getElementById('audio-select');
   const volumeSliderEl = document.getElementById('volume-slider');
   const audioPlayerEl = document.getElementById('audio-player');
-  const darkModeToggleEl = document.getElementById('dark-mode-toggle');
 
   // New background colour pickers for dynamic gradient
   const bgColor1El = document.getElementById('bg-color1');
@@ -108,12 +108,8 @@
   const nextTrackEl = document.getElementById('next-track');
 
   // Additional DOM elements for enhanced controls and settings
-  const secondaryControlsEl = document.getElementById('secondary-controls');
   const addMinuteEl = document.getElementById('add-minute');
   const subtractMinuteEl = document.getElementById('subtract-minute');
-  const skipToWorkEl = document.getElementById('skip-to-work');
-  const skipToBreakEl = document.getElementById('skip-to-break');
-  const audioToggleEl = document.getElementById('audio-toggle');
   const muteToggleEl = document.getElementById('mute-toggle');
   const audioProgressEl = document.getElementById('audio-progress');
   const audioProgressGroupEl = document.querySelector('.audio-progress-group');
@@ -124,7 +120,6 @@
   const localAudioListEl = document.getElementById('local-audio-list');
   const colorPickerEl = document.getElementById('color-picker');
   const themePresetSelectEl = document.getElementById('theme-preset-select');
-  const tasksInputEl = document.getElementById('tasks-input');
   const currentTaskEl = document.getElementById('current-task');
 
   // New DOM elements for additional features
@@ -160,6 +155,11 @@
   const notificationPanelEl = document.getElementById('notification-panel');
   const backNotificationsEl = document.getElementById('back-notifications');
   const closeNotificationsEl = document.getElementById('close-notifications');
+  const playlistPanelEl = document.getElementById('playlist-panel');
+  const playlistManagerButtonEl = document.getElementById('playlist-manager-button');
+  const playlistManagerSummaryEl = document.getElementById('playlist-manager-summary');
+  const backPlaylistEl = document.getElementById('back-playlist');
+  const closePlaylistEl = document.getElementById('close-playlist');
   const quoteDisplayEl = document.getElementById('quote-display');
 
   // Element for displaying the user's theme quote (quote of the day)
@@ -171,8 +171,7 @@
     preferences: 'pomodoroPreferences',
     tasks: 'pomodoroTasks',
     history: 'pomodoroHistory',
-    themeQuote: 'pomodoroThemeQuote',
-    notificationPermissionRequested: 'notificationPermissionRequested'
+    themeQuote: 'pomodoroThemeQuote'
   };
 
   function readStorageValue(key) {
@@ -230,6 +229,11 @@
     writeStoredPreferences({ ...prefs, ...cleanPatch });
   }
 
+  function parsePositiveInt(value, fallback) {
+    const v = parseInt(value, 10);
+    return Number.isFinite(v) && v > 0 ? v : fallback;
+  }
+
   /* ---------------------------------------------------------------------------
  * CENTRAL PANEL MANAGER – one source of truth for open/close behaviour
  * ------------------------------------------------------------------------- */
@@ -240,6 +244,7 @@
     ['audio', audioPanelEl],
     ['stats', statsPanelEl],
     ['notifications', notificationPanelEl],
+    ['playlist', playlistPanelEl],
   ]);
 
   function showPanel(key) {
@@ -326,10 +331,6 @@
   function refreshAudioIcons() {
     if (audioPlayPauseEl) {
       audioPlayPauseEl.textContent = audioIsPlaying ? '⏸' : '▶';
-    }
-    if (audioToggleEl) {
-      // loud‐speaker glyph if file is loaded *and* playing
-      audioToggleEl.textContent = (audioPlayerEl.src && audioIsPlaying) ? '🔈' : '🔇';
     }
   }
 
@@ -492,6 +493,18 @@
     return `${value} ${value === 1 ? singular : plural}`;
   }
 
+  function updatePlaylistSummary() {
+    if (!playlistManagerSummaryEl) return;
+    playlistManagerSummaryEl.replaceChildren();
+    const items = localAudioFolders.length > 0
+      ? [
+        formatCount(localAudioFolders.length, 'folder'),
+        formatCount(countLocalAudioTracks(), 'track')
+      ]
+      : ['No folders added'];
+    items.forEach((text) => playlistManagerSummaryEl.appendChild(renderSummaryChip(text)));
+  }
+
   function updateLocalAudioStatus(message = null) {
     if (localAudioStatusEl) {
       if (message) {
@@ -506,6 +519,8 @@
     if (clearLocalAudioButtonEl) {
       clearLocalAudioButtonEl.classList.toggle('hidden', localAudioFolders.length === 0);
     }
+
+    updatePlaylistSummary();
   }
 
   function revokeFolderObjectUrls(folder) {
@@ -950,14 +965,14 @@
    */
   function loadPreferences() {
     const stored = readStoredPreferences();
-    workDuration = parseInt(stored.workDuration || DEFAULTS.workDuration, 10);
-    shortBreakDuration = parseInt(stored.shortBreakDuration || DEFAULTS.shortBreakDuration, 10);
-    longBreakDuration = parseInt(stored.longBreakDuration || DEFAULTS.longBreakDuration, 10);
-    sessionsBeforeLong = parseInt(stored.sessionsBeforeLong || DEFAULTS.sessionsBeforeLong, 10);
+    workDuration = parsePositiveInt(stored.workDuration, DEFAULTS.workDuration);
+    shortBreakDuration = parsePositiveInt(stored.shortBreakDuration, DEFAULTS.shortBreakDuration);
+    longBreakDuration = parsePositiveInt(stored.longBreakDuration, DEFAULTS.longBreakDuration);
+    sessionsBeforeLong = parsePositiveInt(stored.sessionsBeforeLong, DEFAULTS.sessionsBeforeLong);
     const audioTrack = stored.audioTrack || DEFAULTS.audioTrack;
     const volume = typeof stored.volume === 'number' ? stored.volume : DEFAULTS.volume;
     const baseColor = stored.baseColor || '#3b82f6';
-    const themePreset = stored.themePreset || DEFAULTS.themePreset;
+    const themePreset = normalizeThemePreset(stored.themePreset || DEFAULTS.themePreset);
     darkMode = typeof stored.darkMode === 'boolean' ? stored.darkMode : DEFAULTS.darkMode;
     // Load gradient colours and audio genre
     bgColor1 = stored.bgColor1 || DEFAULTS.bgColor1;
@@ -965,7 +980,7 @@
     audioGenre = stored.audioGenre || DEFAULTS.audioGenre;
 
     // Load notification preferences and theme quote
-    isNotificationActive = false
+    isNotificationActive = false;
     notificationMuted = typeof stored.notificationMuted === 'boolean'
       ? stored.notificationMuted
       : DEFAULTS.notificationMuted;
@@ -1001,10 +1016,9 @@
     // applyAudioTrack(audioTrack);
     audioPlayerEl.volume = volume;
 
-    // Apply theme preset first (which may override base colour) and then the chosen colour.
+    applyDarkMode(darkMode);
     applyThemePreset(themePreset);
     applyThemeColor(colorPickerEl.value);
-    applyDarkMode(darkMode);
     updateColorModeButton();
     // Apply background gradient based on stored colours
     applyBackgroundGradient();
@@ -1035,10 +1049,10 @@
    * into seconds for consistent internal use.
    */
   function savePreferences() {
-    workDuration = Math.max(1, parseInt(workInputEl.value, 10)) * 60;
-    shortBreakDuration = Math.max(1, parseInt(shortBreakInputEl.value, 10)) * 60;
-    longBreakDuration = Math.max(1, parseInt(longBreakInputEl.value, 10)) * 60;
-    sessionsBeforeLong = Math.max(1, parseInt(sessionsBeforeLongEl.value, 10));
+    workDuration = parsePositiveInt(workInputEl.value, DEFAULTS.workDuration / 60) * 60;
+    shortBreakDuration = parsePositiveInt(shortBreakInputEl.value, DEFAULTS.shortBreakDuration / 60) * 60;
+    longBreakDuration = parsePositiveInt(longBreakInputEl.value, DEFAULTS.longBreakDuration / 60) * 60;
+    sessionsBeforeLong = parsePositiveInt(sessionsBeforeLongEl.value, DEFAULTS.sessionsBeforeLong);
     const audioTrack = audioSelectEl.value;
     const volume = parseFloat(volumeSliderEl.value);
     const baseColor = colorPickerEl.value;
@@ -1241,65 +1255,59 @@
     return yiq >= 140 ? '#000' : '#fff';
   }
 
+  /** Legacy preset ids mapped to current options (white/silver → frost, steel → twilight). */
+  const THEME_PRESET_ALIASES = {
+    white: 'frost',
+    silver: 'frost',
+    steel: 'twilight'
+  };
+
+  /** Per-preset accent and gradient colours tuned separately for dark and light UI. */
+  const THEME_PRESETS = {
+    twilight: {
+      dark: { colour: '#3b82f6', grad1: '#3358a2', grad2: '#8f5bbb' },
+      light: { colour: '#4338ca', grad1: '#c7d2fe', grad2: '#e9d5ff' }
+    },
+    blue: {
+      dark: { colour: '#0a84ff', grad1: '#3358a2', grad2: '#1e40af' },
+      light: { colour: '#1d4ed8', grad1: '#dbeafe', grad2: '#93c5fd' }
+    },
+    green: {
+      dark: { colour: '#30d158', grad1: '#2ba552', grad2: '#14532d' },
+      light: { colour: '#15803d', grad1: '#dcfce7', grad2: '#86efac' }
+    },
+    pink: {
+      dark: { colour: '#ff375f', grad1: '#be185d', grad2: '#881337' },
+      light: { colour: '#be185d', grad1: '#fce7f3', grad2: '#f9a8d4' }
+    },
+    frost: {
+      dark: { colour: '#60a5fa', grad1: '#1e293b', grad2: '#475569' },
+      light: { colour: '#2563eb', grad1: '#f8fafc', grad2: '#cbd5e1' }
+    },
+    golden: {
+      dark: { colour: '#b7791f', grad1: '#fef3c7', grad2: '#d97706' },
+      light: { colour: '#b45309', grad1: '#fef9c3', grad2: '#fbbf24' }
+    }
+  };
+
+  function normalizeThemePreset(preset) {
+    if (!preset || preset === 'custom') return 'custom';
+    const mapped = THEME_PRESET_ALIASES[preset] || preset;
+    return THEME_PRESETS[mapped] ? mapped : 'custom';
+  }
+
   /**
-   * Apply a predefined theme preset by updating the accent colour. When a preset
-   * is chosen, the colour picker is set to that colour and the accent
-   * variables are recalculated via applyThemeColor(). If 'custom' is
-   * selected, the colour picker retains its current value. Supported
-   * presets draw inspiration from Apple’s palette: Apple Blue, Apple Green
-   * and Apple Pink. Users can still fine‑tune the colour via the picker.
+   * Apply a predefined theme preset. Each preset stores separate dark/light
+   * palettes so contrast stays readable in both colour modes.
    */
   function applyThemePreset(preset) {
-    let colour;
-    // Also update gradient colours for each preset
-    let grad1;
-    let grad2;
-    switch (preset) {
-      case 'apple-blue':
-        colour = '#0A84FF';
-        grad1 = '#3358a2';
-        grad2 = '#1E40AF';
-        break;
-      case 'apple-green':
-        colour = '#30D158';
-        grad1 = '#2BA552';
-        grad2 = '#14532D';
-        break;
-      case 'apple-pink':
-        colour = '#FF375F';
-        grad1 = '#BE185D';
-        grad2 = '#881337';
-        break;
-      case 'apple-steel':
-        colour = '#6B7280';
-        grad1 = '#4B5563';
-        grad2 = '#1F2937';
-        break;
-      case 'apple-white':
-        // A light neutral palette
-        colour = '#D1D1D6';
-        grad1 = '#E5E5EA';
-        grad2 = '#F2F2F7';
-        break;
-      case 'apple-silver':
-        colour = '#C0C0C7';
-        grad1 = '#D2D2D7';
-        grad2 = '#8E8E94';
-        break;
-      case 'apple-golden':
-        colour = '#D4AF37';
-        grad1 = '#F7D06C';
-        grad2 = '#B8860B';
-        break;
-      default:
-        // Custom: do not change the colour or gradient
-        return;
-    }
-    // Update pickers
+    const resolved = normalizeThemePreset(preset);
+    if (resolved === 'custom') return;
+    const palette = THEME_PRESETS[resolved][darkMode ? 'dark' : 'light'];
+    const { colour, grad1, grad2 } = palette;
     if (colorPickerEl) colorPickerEl.value = colour;
     if (bgColor1El) bgColor1El.value = grad1;
     if (bgColor2El) bgColor2El.value = grad2;
-    // Update internal variables for gradient
     bgColor1 = grad1;
     bgColor2 = grad2;
     applyThemeColor(colour);
@@ -1695,23 +1703,33 @@
       root.style.setProperty('--color-primary', '#ffffff');
       root.style.setProperty('--color-secondary', '#d1d5db');
       root.style.setProperty('--color-bg-overlay', 'rgba(0,0,0,0.35)');
-      // Dark panels: use a translucent dark background for frosted glass effect
       root.style.setProperty('--panel-bg', 'rgba(17, 24, 39, 0.75)');
-      // Inputs: dark backgrounds with light text
+      root.style.setProperty('--panel-border', 'rgba(255, 255, 255, 0.15)');
+      root.style.setProperty('--panel-shadow', '0 4px 16px rgba(0, 0, 0, 0.5)');
+      root.style.setProperty('--surface-soft', 'rgba(255, 255, 255, 0.1)');
+      root.style.setProperty('--surface-soft-border', 'rgba(255, 255, 255, 0.12)');
+      root.style.setProperty('--surface-strong', 'rgba(255, 255, 255, 0.22)');
       root.style.setProperty('--input-bg', '#374151');
       root.style.setProperty('--input-color', '#ffffff');
+      root.style.setProperty('--input-border', 'transparent');
+      root.style.setProperty('--quote-bg', 'rgba(0, 0, 0, 0.4)');
     } else {
-      // Light mode: invert colours for a brighter interface reminiscent of macOS
-      root.style.setProperty('--color-primary', '#1f2937');
-      root.style.setProperty('--color-secondary', '#374151');
-      root.style.setProperty('--color-bg-overlay', 'rgba(255,255,255,0.4)');
-      // Light panels: use translucent light background
-      root.style.setProperty('--panel-bg', 'rgba(255, 255, 255, 0.6)');
-      // Inputs: light backgrounds with dark text
-      root.style.setProperty('--input-bg', '#e5e7eb');
-      root.style.setProperty('--input-color', '#1f2937');
+      // Light mode: dark text on a lightly frosted canvas; muted secondary for
+      // labels; frosted (not dark) chips so quote/task text stays readable.
+      root.style.setProperty('--color-primary', '#111827');
+      root.style.setProperty('--color-secondary', '#4b5563');
+      root.style.setProperty('--color-bg-overlay', 'rgba(255, 255, 255, 0.22)');
+      root.style.setProperty('--panel-bg', 'rgba(241, 245, 249, 0.92)');
+      root.style.setProperty('--panel-border', 'rgba(15, 23, 42, 0.14)');
+      root.style.setProperty('--panel-shadow', '0 6px 20px rgba(15, 23, 42, 0.14)');
+      root.style.setProperty('--surface-soft', 'rgba(15, 23, 42, 0.1)');
+      root.style.setProperty('--surface-soft-border', 'rgba(15, 23, 42, 0.16)');
+      root.style.setProperty('--surface-strong', 'rgba(15, 23, 42, 0.18)');
+      root.style.setProperty('--input-bg', '#ffffff');
+      root.style.setProperty('--input-color', '#111827');
+      root.style.setProperty('--input-border', 'rgba(15, 23, 42, 0.16)');
+      root.style.setProperty('--quote-bg', 'rgba(255, 255, 255, 0.72)');
     }
-    // Update background gradient to match new theme brightness
     applyBackgroundGradient();
   }
 
@@ -1733,6 +1751,8 @@
     darkMode = !darkMode;
     applyDarkMode(darkMode);
     updateColorModeButton();
+    const preset = themePresetSelectEl ? themePresetSelectEl.value : 'custom';
+    if (preset !== 'custom') applyThemePreset(preset);
   }
 
   /**
@@ -1917,15 +1937,16 @@
   function togglePlayPause() {
     if (!audioPlayerEl) return;
 
-    // Flip the intention flag first
     audioIsPlaying = !audioIsPlaying;
 
     if (audioIsPlaying) {
-      // If no track loaded yet, choose the current <select> value
-      if (!audioPlayerEl.src && audioSelectEl) {
-        applyAudioTrack(audioSelectEl.value);
+      if (!audioSelectEl || audioSelectEl.value === 'none') {
+        audioIsPlaying = false;
+        refreshAudioIcons();
+        return;
       }
-      audioPlayerEl.play().catch(() => { audioIsPlaying = false; });
+      if (!audioPlayerEl.src) applyAudioTrack(audioSelectEl.value);
+      audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
     } else {
       audioPlayerEl.pause();
     }
@@ -2177,8 +2198,14 @@
     sessionStartTime = null;
     sessionTotalTime = null;
     updateDisplay();
-    // Automatically start next session
-    startTimer();
+    if (currentSessionType === SESSION.WORK) {
+      // Break just ended; let the user explicitly start the next work session.
+      startButtonEl.textContent = '▶';
+      startButtonEl.setAttribute('title', 'Start');
+    } else {
+      // Work just ended; auto-start the upcoming break.
+      startTimer();
+    }
   }
 
   // Utility to get chime duration reliably, even before metadata is loaded
@@ -2284,7 +2311,7 @@
         try {
           new Notification(title, {
             body: body,
-            icon: "assets/icon.png"
+            icon: "assets/flodoro-logo.png"
           });
         } catch (e) {
           console.warn("Notification failed:", e);
@@ -2667,27 +2694,17 @@
   function openAudio() { togglePanel('audio'); }
   function closeAudio() { hidePanel('audio'); }
 
+  function openPlaylist() { togglePanel('playlist'); }
+  function closePlaylist() { hidePanel('playlist'); }
+  function backToAudioFromPlaylist() {
+    hidePanel('playlist');
+    showPanel('audio');
+  }
+
   /** Statistics panel functions */
   function openStats() { togglePanel('stats'); }
   function closeStats() { hidePanel('stats'); }
 
-  // Toggle audio playback independently of the timer
-  function toggleAudio() {
-    if (!audioPlayerEl) return;
-    audioIsPlaying = !audioIsPlaying;
-    if (audioIsPlaying) {
-      if (!audioSelectEl || audioSelectEl.value === 'none') {
-        audioIsPlaying = false;
-        refreshAudioIcons();
-        return;
-      }
-      if (!audioPlayerEl.src) applyAudioTrack(audioSelectEl.value);
-      audioPlayerEl.play().catch(() => { audioIsPlaying = false; refreshAudioIcons(); });
-    } else {
-      audioPlayerEl.pause();
-    }
-    refreshAudioIcons();
-  }
   // Toggle mute/unmute, remembering the previous volume
   let previousVolume = DEFAULTS.volume;
   function toggleMute() {
@@ -2750,7 +2767,7 @@
         break;
       case 'v':
       case 'V':
-        toggleAudio();
+        togglePlayPause();
         break;
       case 't':
       case 'T':
@@ -2765,24 +2782,17 @@
     }
   }
 
-  // Request notification permission on load
+  // Ask the browser for notification permission. Browser permission state
+  // (granted / denied / default) is the single source of truth; we never
+  // shadow it with a localStorage flag.
   function requestNotificationPermission() {
     if (notificationMuted || !notificationVisualAlertsEnabled) return;
-
-    // Ask for notification permission only once. If permission is default and we
-    // haven't requested before, prompt the user and store a flag. Otherwise,
-    // do nothing.
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
     try {
-      if ('Notification' in window && Notification.permission === 'default') {
-        const asked = readStorageValue(STORAGE_KEYS.notificationPermissionRequested);
-        if (!asked) {
-          Notification.requestPermission().finally(() => {
-            writeStorageValue(STORAGE_KEYS.notificationPermissionRequested, 'true');
-          });
-        }
-      }
+      Notification.requestPermission();
     } catch (e) {
-      // Gracefully ignore errors (e.g. if Notification is undefined)
+      // Older browsers throw on the promise form; ignore.
     }
   }
 
@@ -2804,8 +2814,6 @@
     // Secondary controls
     if (addMinuteEl) addMinuteEl.addEventListener('click', () => addMinutes(1));
     if (subtractMinuteEl) subtractMinuteEl.addEventListener('click', () => subtractMinutes(1));
-    // Skip buttons removed; session toggle handled by mode toggle
-    if (audioToggleEl) audioToggleEl.addEventListener('click', toggleAudio);
     if (muteToggleEl) muteToggleEl.addEventListener('click', toggleMute);
     if (audioProgressEl) audioProgressEl.addEventListener('input', seekAudio);
     if (localAudioFolderButtonEl) localAudioFolderButtonEl.addEventListener('click', chooseLocalAudioFolder);
@@ -2901,7 +2909,8 @@
     });
     // Theme preset selection
     if (themePresetSelectEl) themePresetSelectEl.addEventListener('change', () => {
-      const preset = themePresetSelectEl.value;
+      const preset = normalizeThemePreset(themePresetSelectEl.value);
+      if (themePresetSelectEl.value !== preset) themePresetSelectEl.value = preset;
       applyThemePreset(preset);
       const patch = { themePreset: preset };
       if (preset !== 'custom') {
@@ -2933,6 +2942,9 @@
     if (notificationSettingsButtonEl) notificationSettingsButtonEl.addEventListener('click', openNotifications);
     if (backNotificationsEl) backNotificationsEl.addEventListener('click', backToSettingsFromNotifications);
     if (closeNotificationsEl) closeNotificationsEl.addEventListener('click', closeNotifications);
+    if (playlistManagerButtonEl) playlistManagerButtonEl.addEventListener('click', openPlaylist);
+    if (backPlaylistEl) backPlaylistEl.addEventListener('click', backToAudioFromPlaylist);
+    if (closePlaylistEl) closePlaylistEl.addEventListener('click', closePlaylist);
   }
 
   // Initialise application

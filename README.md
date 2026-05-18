@@ -1,9 +1,11 @@
 <h1>
-  <img src="assets/pomodoro-app-logo.png" alt="" width="39" align="absmiddle" />
-  <samp>Pomodoro App</samp>
+  <img src="assets/flodoro-logo.png" alt="" width="39" align="absmiddle" />
+  <samp>Flodoro</samp>
 </h1>
 
-`pomodoro-app` is a serverless, local-first Pomodoro timer and task manager for focused work sessions, breaks, ambient audio, lightweight history, and personal workflow tracking.
+> Pomodoro, where music flows.
+
+Flodoro is a serverless, local-first Pomodoro timer and task manager for focused work sessions, breaks, ambient audio, lightweight history, and personal workflow tracking.
 
 It is designed as one clean webpage: no backend, no account system, no sync requirement. User preferences, tasks, history, notification settings, and audio choices stay in the browser. JSON app state uses `localStorage`; local music folder access uses the browser picker and, where supported, an IndexedDB-stored folder handle.
 
@@ -27,7 +29,7 @@ pomodoro-app/
   update_songs.py            # optional local helper for generating ignored manifests
   process_video.py           # local helper for preparing loopable media
   assets/
-    pomodoro-app-logo.png    # README/app logo
+    flodoro-logo.png    # README/app logo
     audio/notify.mp3         # notification chime
     demo/                    # optional screenshots/GIFs for README demos
     music/                   # ignored local music scratch space

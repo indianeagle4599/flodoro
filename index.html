@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pomodoro Timer</title>
+  <title>Flodoro</title>
+  <link rel="icon" type="image/png" href="assets/flodoro-logo.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -38,9 +39,11 @@
 
 <body>
   <div id="app" tabindex="0">
-    <header class="app-header">
-      <!-- We intentionally omit the Pomodoro Timer heading for a cleaner look -->
-      <!-- Place the header tray on the left for intuitive access -->
+    <header class="app-navbar" role="banner">
+      <div class="navbar-brand">
+        <img class="navbar-logo" src="assets/flodoro-logo.png" alt="" width="36" height="36" />
+        <span class="navbar-title">Flodoro</span>
+      </div>
       <div class="header-tray">
         <button id="tasks-button" class="icon-button" aria-label="Tasks" title="Tasks">📋</button>
         <button id="history-button" class="icon-button" aria-label="History" title="History">📊</button>
@@ -128,13 +131,12 @@
           <label for="theme-preset-select">Theme&nbsp;preset</label>
           <select id="theme-preset-select">
             <option value="custom">Custom</option>
-            <option value="apple-blue">Apple&nbsp;Blue</option>
-            <option value="apple-green">Apple&nbsp;Green</option>
-            <option value="apple-pink">Apple&nbsp;Pink</option>
-            <option value="apple-steel">Apple&nbsp;Steel</option>
-            <option value="apple-white">Apple&nbsp;White</option>
-            <option value="apple-silver">Apple&nbsp;Silver</option>
-            <option value="apple-golden">Apple&nbsp;Golden</option>
+            <option value="twilight">Twilight</option>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="pink">Pink</option>
+            <option value="frost">Frost</option>
+            <option value="golden">Golden</option>
           </select>
         </div>
         <div class="settings-group notification-launch-group">
@@ -195,15 +197,13 @@
       aria-labelledby="audio-title">
       <h2 id="audio-title" class="panel-title">Audio Settings</h2>
       <div class="audio-content">
-        <div class="settings-group local-audio-group">
-          <label for="local-audio-folder-button">Playlist manager</label>
-          <div class="local-audio-actions">
-            <button id="local-audio-folder-button" class="control-button" type="button">Add folder</button>
-            <button id="clear-local-audio-button" class="control-button hidden" type="button">Clear all</button>
+        <div class="settings-group playlist-launch-group">
+          <label id="playlist-manager-label">Playlists</label>
+          <div class="playlist-launch-row">
+            <span id="playlist-manager-summary" class="settings-summary" aria-live="polite"></span>
+            <button id="playlist-manager-button" class="icon-button compact-panel-button" type="button"
+              aria-label="Playlist Manager" title="Playlist Manager">📁</button>
           </div>
-          <div id="local-audio-status" class="local-audio-status">Add one or more local music folders.</div>
-          <div id="local-audio-list" class="local-audio-list" aria-live="polite"></div>
-          <input id="local-audio-input" class="hidden" type="file" accept="audio/*" multiple webkitdirectory />
         </div>
         <div class="settings-group">
           <label for="audio-genre-select">Playlist</label>
@@ -234,6 +234,26 @@
         </div>
         <div class="audio-actions">
           <button id="close-audio" class="control-button">Close</button>
+        </div>
+      </div>
+    </div>
+    <!-- Playlist manager panel: focused folder management away from the audio panel -->
+    <div id="playlist-panel" class="playlist-panel slideout hidden" role="dialog" aria-modal="true"
+      aria-labelledby="playlist-title">
+      <h2 id="playlist-title" class="panel-title">Playlist Manager</h2>
+      <div class="playlist-content">
+        <div class="settings-group local-audio-group">
+          <div class="local-audio-actions">
+            <button id="local-audio-folder-button" class="control-button" type="button">Add folder</button>
+            <button id="clear-local-audio-button" class="control-button hidden" type="button">Clear all</button>
+          </div>
+          <div id="local-audio-status" class="local-audio-status">Add one or more local music folders.</div>
+          <div id="local-audio-list" class="local-audio-list" aria-live="polite"></div>
+          <input id="local-audio-input" class="hidden" type="file" accept="audio/*" multiple webkitdirectory />
+        </div>
+        <div class="playlist-actions">
+          <button id="back-playlist" class="control-button">Back</button>
+          <button id="close-playlist" class="control-button">Close</button>
         </div>
       </div>
     </div>
