@@ -43,9 +43,13 @@ pomodoro-app/
 | --- | --- | --- |
 | ![Settings panel](assets/demo/settings-panel.png) | ![Notification settings panel](assets/demo/notifications.png) | ![Audio settings panel](assets/demo/audio-panel.png) |
 
-| Tasks | History | Statistics |
+| Playlist manager | Tasks | History |
 | --- | --- | --- |
-| ![Tasks panel](assets/demo/tasks-panel.png) | ![History panel](assets/demo/history-panel.png) | ![Statistics panel](assets/demo/stats-panel.png) |
+| ![Playlist manager panel](assets/demo/playlist-manager.png) | ![Tasks panel](assets/demo/tasks-panel.png) | ![History panel](assets/demo/history-panel.png) |
+
+| Statistics |
+| --- |
+| ![Statistics panel](assets/demo/stats-panel.png) |
 
 ## What is usable today
 
@@ -92,7 +96,7 @@ Available knobs:
 - **On-screen alerts**: toast and browser notification output.
 - **Notification timing**: `1 min early`, `5 min early`, custom early reminders, and `When session ends`.
 
-Browser notification permission is only useful for on-screen browser notifications. The app still works with local toast/chime behavior when browser permission is not granted.
+Browser notification permission is only useful for on-screen browser notifications. The app asks on load and retries when the user turns on on-screen alerts; if the browser has blocked permission, the app keeps local toast/chime behavior and points the user to browser site settings.
 
 ### 6. Themes and visual settings
 

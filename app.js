@@ -230,8 +230,24 @@
   }
 
   function parsePositiveInt(value, fallback) {
-    const v = parseInt(value, 10);
+    if (value === null || value === undefined) return fallback;
+    const trimmed = String(value).trim();
+    if (trimmed === '') return fallback;
+    const v = parseInt(trimmed, 10);
     return Number.isFinite(v) && v > 0 ? v : fallback;
+  }
+
+  function syncDurationInputs() {
+    if (workInputEl) workInputEl.value = String(Math.round(workDuration / 60));
+    if (shortBreakInputEl) shortBreakInputEl.value = String(Math.round(shortBreakDuration / 60));
+    if (longBreakInputEl) longBreakInputEl.value = String(Math.round(longBreakDuration / 60));
+    if (sessionsBeforeLongEl) sessionsBeforeLongEl.value = String(sessionsBeforeLong);
+  }
+
+  function fixInvalidRemainingTime() {
+    if (Number.isFinite(remainingTime) && remainingTime > 0) return;
+    remainingTime = currentSessionType === SESSION.LONG_BREAK ? longBreakDuration
+      : currentSessionType === SESSION.SHORT_BREAK ? shortBreakDuration : workDuration;
   }
 
   /* ---------------------------------------------------------------------------
@@ -349,6 +365,12 @@
     legacyDirectoryKey: 'musicDirectory'
   };
   const AUDIO_FILE_RE = /\.(mp3|wav|ogg|m4a|aac|flac|opus|webm)$/i;
+  const NOTIFICATION_CHIME_SOURCES = [
+    'assets/audio/notify.mp3',
+    'https://raw.githubusercontent.com/indianeagle4599/pomodoro-app/main/assets/audio/notify.mp3'
+  ];
+  const DEFAULT_CHIME_DURATION = 1;
+  const CHIME_METADATA_TIMEOUT_MS = 2500;
 
   function cloneAudioLibrary(library) {
     return Object.fromEntries(
@@ -963,14 +985,16 @@
    * preference is not found, use the defaults defined above. This
    * ensures the timer persists user choices across sessions.
    */
-  function loadPreferences() {
+  function loadPreferences({ resetTimerState = true, reloadCollections = true } = {}) {
     const stored = readStoredPreferences();
     workDuration = parsePositiveInt(stored.workDuration, DEFAULTS.workDuration);
     shortBreakDuration = parsePositiveInt(stored.shortBreakDuration, DEFAULTS.shortBreakDuration);
     longBreakDuration = parsePositiveInt(stored.longBreakDuration, DEFAULTS.longBreakDuration);
     sessionsBeforeLong = parsePositiveInt(stored.sessionsBeforeLong, DEFAULTS.sessionsBeforeLong);
     const audioTrack = stored.audioTrack || DEFAULTS.audioTrack;
-    const volume = typeof stored.volume === 'number' ? stored.volume : DEFAULTS.volume;
+    const volume = Number.isFinite(stored.volume)
+      ? Math.min(1, Math.max(0, stored.volume))
+      : DEFAULTS.volume;
     const baseColor = stored.baseColor || '#3b82f6';
     const themePreset = normalizeThemePreset(stored.themePreset || DEFAULTS.themePreset);
     darkMode = typeof stored.darkMode === 'boolean' ? stored.darkMode : DEFAULTS.darkMode;
@@ -996,13 +1020,10 @@
     notifyEnd = typeof stored.notifyEnd === 'boolean' ? stored.notifyEnd : true;
     themeQuote = readStorageValue(STORAGE_KEYS.themeQuote) || null;
     // Tasks are loaded separately via loadTasks()
-    currentTaskIndex = 0;
+    if (reloadCollections) currentTaskIndex = 0;
 
     // Apply to input fields
-    if (workInputEl) workInputEl.value = Math.round(workDuration / 60);
-    if (shortBreakInputEl) shortBreakInputEl.value = Math.round(shortBreakDuration / 60);
-    if (longBreakInputEl) longBreakInputEl.value = Math.round(longBreakDuration / 60);
-    if (sessionsBeforeLongEl) sessionsBeforeLongEl.value = sessionsBeforeLong;
+    syncDurationInputs();
     if (audioSelectEl) audioSelectEl.value = audioTrack;
     if (volumeSliderEl) volumeSliderEl.value = volume;
     if (colorPickerEl) colorPickerEl.value = baseColor;
@@ -1025,14 +1046,20 @@
     // Populate audio select options for stored genre
     updateAudioSelectOptions({ persist: false, preferredTrackId: audioTrack });
 
-    remainingTime = workDuration;
+    if (resetTimerState) {
+      remainingTime = workDuration;
+    } else {
+      fixInvalidRemainingTime();
+    }
     updateDisplay();
     updateCurrentTaskDisplay();
     updateAudioProgressVisibility();
 
     // Load tasks and history separately
-    loadTasks();
-    loadHistory();
+    if (reloadCollections) {
+      loadTasks();
+      loadHistory();
+    }
 
     // Update statistics summary after loading history
     updateStatsSummary();
@@ -1049,12 +1076,16 @@
    * into seconds for consistent internal use.
    */
   function savePreferences() {
-    workDuration = parsePositiveInt(workInputEl.value, DEFAULTS.workDuration / 60) * 60;
-    shortBreakDuration = parsePositiveInt(shortBreakInputEl.value, DEFAULTS.shortBreakDuration / 60) * 60;
-    longBreakDuration = parsePositiveInt(longBreakInputEl.value, DEFAULTS.longBreakDuration / 60) * 60;
-    sessionsBeforeLong = parsePositiveInt(sessionsBeforeLongEl.value, DEFAULTS.sessionsBeforeLong);
+    const minutes = (el, fallbackMin) => parsePositiveInt(el?.value, fallbackMin);
+    workDuration = minutes(workInputEl, DEFAULTS.workDuration / 60) * 60;
+    shortBreakDuration = minutes(shortBreakInputEl, DEFAULTS.shortBreakDuration / 60) * 60;
+    longBreakDuration = minutes(longBreakInputEl, DEFAULTS.longBreakDuration / 60) * 60;
+    sessionsBeforeLong = minutes(sessionsBeforeLongEl, DEFAULTS.sessionsBeforeLong);
+    syncDurationInputs();
+    fixInvalidRemainingTime();
     const audioTrack = audioSelectEl.value;
-    const volume = parseFloat(volumeSliderEl.value);
+    const volumeRaw = parseFloat(volumeSliderEl?.value);
+    const volume = Number.isFinite(volumeRaw) ? Math.min(1, Math.max(0, volumeRaw)) : DEFAULTS.volume;
     const baseColor = colorPickerEl.value;
     const themePreset = themePresetSelectEl ? themePresetSelectEl.value : 'custom';
     // Use current darkMode state rather than reading from a checkbox
@@ -1095,6 +1126,7 @@
     }
 
     audioPlayerEl.volume = volume;
+    if (volumeSliderEl) volumeSliderEl.value = String(volume);
 
     applyThemeColor(baseColor);
     applyDarkMode(darkMode);
@@ -1168,9 +1200,8 @@
 
   // Format seconds into MM:SS string
   function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const s = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   }
 
   /*
@@ -1568,7 +1599,7 @@
     notificationsCheckbox.addEventListener('change', () => {
       notificationMuted = !notificationsCheckbox.checked;
       persistNotificationSettings();
-      if (!notificationMuted && notificationVisualAlertsEnabled) requestNotificationPermission();
+      if (!notificationMuted && notificationVisualAlertsEnabled) requestNotificationPermission({ userInitiated: true });
       updateNotificationUI();
     });
     soundCheckbox.addEventListener('change', () => {
@@ -1579,7 +1610,7 @@
     visualCheckbox.addEventListener('change', () => {
       notificationVisualAlertsEnabled = visualCheckbox.checked;
       persistNotificationSettings();
-      if (!notificationMuted && notificationVisualAlertsEnabled) requestNotificationPermission();
+      if (!notificationMuted && notificationVisualAlertsEnabled) requestNotificationPermission({ userInitiated: true });
       updateNotificationUI();
     });
     oneMinCheckbox.addEventListener('change', () => {
@@ -2209,13 +2240,85 @@
   }
 
   // Utility to get chime duration reliably, even before metadata is loaded
+  function getValidChimeDuration(chimeEl) {
+    return chimeEl?.duration && Number.isFinite(chimeEl.duration) && chimeEl.duration > 0
+      ? chimeEl.duration
+      : null;
+  }
+
+  function setChimeSource(chimeEl, sourceIndex) {
+    const source = NOTIFICATION_CHIME_SOURCES[sourceIndex];
+    if (!chimeEl || !source) return false;
+    if (chimeEl.getAttribute('src') !== source) {
+      chimeEl.setAttribute('src', source);
+      chimeEl.load();
+    }
+    chimeEl.dataset.sourceIndex = String(sourceIndex);
+    return true;
+  }
+
   function getChimeDuration(chimeEl) {
     return new Promise((resolve) => {
-      if (chimeEl.readyState >= 1 && chimeEl.duration && !isNaN(chimeEl.duration)) {
-        resolve(chimeEl.duration);
-      } else {
-        chimeEl.onloadedmetadata = () => resolve(chimeEl.duration || 1);
+      if (!chimeEl) {
+        resolve(DEFAULT_CHIME_DURATION);
+        return;
       }
+
+      function trySource(sourceIndex) {
+        if (!setChimeSource(chimeEl, sourceIndex)) {
+          resolve(DEFAULT_CHIME_DURATION);
+          return;
+        }
+
+        const duration = getValidChimeDuration(chimeEl);
+        if (chimeEl.readyState >= 1 && duration) {
+          resolve(duration);
+          return;
+        }
+
+        let settled = false;
+        let timeoutId = null;
+
+        function cleanup() {
+          chimeEl.removeEventListener('loadedmetadata', handleLoaded);
+          chimeEl.removeEventListener('error', handleFailed);
+          if (timeoutId !== null) clearTimeout(timeoutId);
+        }
+
+        function finish(durationValue) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve(durationValue || DEFAULT_CHIME_DURATION);
+        }
+
+        function tryNext() {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          if (sourceIndex + 1 < NOTIFICATION_CHIME_SOURCES.length) {
+            trySource(sourceIndex + 1);
+          } else {
+            console.warn('Notification chime metadata unavailable; using fallback duration.');
+            resolve(DEFAULT_CHIME_DURATION);
+          }
+        }
+
+        function handleLoaded() {
+          finish(getValidChimeDuration(chimeEl));
+        }
+
+        function handleFailed() {
+          tryNext();
+        }
+
+        chimeEl.addEventListener('loadedmetadata', handleLoaded, { once: true });
+        chimeEl.addEventListener('error', handleFailed, { once: true });
+        timeoutId = setTimeout(tryNext, CHIME_METADATA_TIMEOUT_MS);
+        chimeEl.load();
+      }
+
+      trySource(0);
     });
   }
 
@@ -2785,15 +2888,51 @@
   // Ask the browser for notification permission. Browser permission state
   // (granted / denied / default) is the single source of truth; we never
   // shadow it with a localStorage flag.
-  function requestNotificationPermission() {
-    if (notificationMuted || !notificationVisualAlertsEnabled) return;
-    if (!('Notification' in window)) return;
-    if (Notification.permission !== 'default') return;
-    try {
-      Notification.requestPermission();
-    } catch (e) {
-      // Older browsers throw on the promise form; ignore.
+  function reportNotificationPermission(permission, userInitiated) {
+    if (!userInitiated) return;
+    if (permission === 'granted') {
+      showToast('Browser notifications are enabled.', 2500);
+    } else if (permission === 'denied') {
+      showToast('Browser notifications are blocked. Enable them in browser site settings.', 6000);
     }
+  }
+
+  function requestNotificationPermission({ userInitiated = false } = {}) {
+    if (notificationMuted || !notificationVisualAlertsEnabled) return Promise.resolve(null);
+    if (!('Notification' in window)) {
+      if (userInitiated) showToast('Browser notifications are not supported here.', 4000);
+      return Promise.resolve('unsupported');
+    }
+
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+      reportNotificationPermission(Notification.permission, userInitiated);
+      return Promise.resolve(Notification.permission);
+    }
+
+    try {
+      if (Notification.requestPermission.length > 0) {
+        return new Promise((resolve) => {
+          Notification.requestPermission((permission) => {
+            reportNotificationPermission(permission, userInitiated);
+            resolve(permission);
+          });
+        });
+      }
+
+      const permissionRequest = Notification.requestPermission();
+      if (permissionRequest && typeof permissionRequest.then === 'function') {
+        return permissionRequest.then((permission) => {
+          reportNotificationPermission(permission, userInitiated);
+          return permission;
+        });
+      }
+    } catch (e) {
+      if (userInitiated) showToast('Could not request browser notification permission.', 4000);
+      return Promise.resolve('error');
+    }
+
+    reportNotificationPermission(Notification.permission, userInitiated);
+    return Promise.resolve(Notification.permission);
   }
 
   // Attach event listeners
@@ -2805,8 +2944,8 @@
     saveSettingsEl.addEventListener('click', savePreferences);
     closeSettingsEl.addEventListener('click', () => {
       closeSettings();
-      // reload preferences to revert unsaved changes
-      loadPreferences();
+      // reload preferences to revert unsaved changes without resetting an active timer
+      loadPreferences({ resetTimerState: false, reloadCollections: false });
     });
     volumeSliderEl.addEventListener('input', () => {
       audioPlayerEl.volume = parseFloat(volumeSliderEl.value);
