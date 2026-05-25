@@ -1,0 +1,28 @@
+# Flodoro
+
+> Pomodoro, where music flows. A serverless, local-first Pomodoro timer and lightweight task manager in one focused webpage.
+
+Flodoro runs entirely in the browser: no backend, accounts, or sync. Timer preferences, tasks, session history, themes, and notification settings live in `localStorage`. Local music uses the browser folder picker and, on Chromium, IndexedDB-stored folder handles. Audio is optional; the timer and task manager work without music files.
+
+Important notes:
+
+- Live app URL: https://hiteshgoyal.me/flodoro/
+- Source repository: https://github.com/indianeagle4599/flodoro
+- Do not describe bundled MP3s as shipped with the repo; music is user-selected locally.
+- User task text is rendered with `textContent`, not HTML injection.
+
+## App
+
+- [Flodoro web app](https://hiteshgoyal.me/flodoro/): Timer, tasks, history, statistics, themes, notifications, local playlist manager
+- [Page summary (markdown)](https://hiteshgoyal.me/flodoro/index.html.md): LLM-readable overview of the hosted page and features
+
+## Documentation
+
+- [README](https://github.com/indianeagle4599/flodoro/blob/main/README.md): Features, keyboard shortcuts, local data model, running locally
+- [Product context](https://github.com/indianeagle4599/flodoro/blob/main/docs/CONTEXT.md): Product intent, phase, constraints, repo layout
+
+## Optional
+
+- [AI access notes](https://hiteshgoyal.me/flodoro/ai.txt): Crawl policy and agent guidance
+- [Audio assets policy](https://github.com/indianeagle4599/flodoro/blob/main/docs/audio-assets.md): Local folders, manifest generation, deployment policy
+- [Agent collaboration rules](https://github.com/indianeagle4599/flodoro/blob/main/AGENTS.md): How to change this repo safely

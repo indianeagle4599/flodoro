@@ -367,7 +367,7 @@
   const AUDIO_FILE_RE = /\.(mp3|wav|ogg|m4a|aac|flac|opus|webm)$/i;
   const NOTIFICATION_CHIME_SOURCES = [
     'assets/audio/notify.mp3',
-    'https://raw.githubusercontent.com/indianeagle4599/pomodoro-app/main/assets/audio/notify.mp3'
+    'https://raw.githubusercontent.com/indianeagle4599/flodoro/main/assets/audio/notify.mp3'
   ];
   const DEFAULT_CHIME_DURATION = 1;
   const CHIME_METADATA_TIMEOUT_MS = 2500;

@@ -220,6 +220,22 @@ body {
   padding: 1rem;
 }
 
+.noscript-notice {
+  position: relative;
+  z-index: 2;
+  margin: 0.75rem auto;
+  padding: 0.75rem 1rem;
+  max-width: 28rem;
+  text-align: center;
+  background: rgba(17, 24, 39, 0.92);
+  border-radius: var(--border-radius);
+}
+
+.noscript-notice a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .session-label {
   /* Hide the redundant session label since mode toggle displays it */
   display: none;

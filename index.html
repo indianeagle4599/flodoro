@@ -4,7 +4,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flodoro</title>
+  <title>Flodoro — Pomodoro timer and task manager</title>
+  <meta name="description"
+    content="Flodoro is a free, serverless Pomodoro timer and local-first task manager with history, themes, notifications, and optional local music playlists." />
+  <meta name="author" content="Flodoro" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://hiteshgoyal.me/flodoro/" />
+  <link rel="sitemap" type="application/xml" title="Sitemap"
+    href="https://hiteshgoyal.me/flodoro/sitemap.xml" />
+  <link rel="alternate" type="text/markdown" href="index.html.md" title="LLM-readable page summary" />
+  <link rel="help" type="text/plain" href="llms.txt" title="LLM and agent site index" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Flodoro" />
+  <meta property="og:title" content="Flodoro — Pomodoro timer and task manager" />
+  <meta property="og:description"
+    content="Serverless Pomodoro timer with local tasks, session history, themes, notifications, and optional local music." />
+  <meta property="og:url" content="https://hiteshgoyal.me/flodoro/" />
+  <meta property="og:image" content="https://hiteshgoyal.me/flodoro/assets/flodoro-logo.png" />
+  <meta property="og:image:alt" content="Flodoro logo" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Flodoro — Pomodoro timer and task manager" />
+  <meta name="twitter:description"
+    content="Free, local-first Pomodoro timer and task manager. No account required." />
+  <meta name="twitter:image" content="https://hiteshgoyal.me/flodoro/assets/flodoro-logo.png" />
+  <meta name="twitter:image:alt" content="Flodoro logo" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Flodoro",
+      "alternateName": "Flodoro Pomodoro",
+      "url": "https://hiteshgoyal.me/flodoro/",
+      "image": "https://hiteshgoyal.me/flodoro/assets/flodoro-logo.png",
+      "codeRepository": "https://github.com/indianeagle4599/flodoro",
+      "description": "Serverless, local-first Pomodoro timer and task manager with session history, themes, notifications, and optional local music playlists.",
+      "applicationCategory": "ProductivityApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Works in modern browsers with localStorage.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Configurable Pomodoro work and break durations",
+        "Local task list with starring and reordering",
+        "Session history and statistics",
+        "Theme presets, gradients, and dark mode",
+        "Notification sounds, toasts, and browser alerts",
+        "Local music folder playlists via browser APIs"
+      ],
+      "isAccessibleForFree": true,
+      "inLanguage": "en"
+    }
+  </script>
   <link rel="icon" type="image/png" href="assets/flodoro-logo.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -40,11 +94,15 @@
 
 
 <body>
+  <noscript>
+    <p class="noscript-notice">Flodoro needs JavaScript for the timer.
+      See the <a href="index.html.md">page summary</a> or <a href="https://github.com/indianeagle4599/flodoro">repository</a>.</p>
+  </noscript>
   <div id="app" tabindex="0">
     <header class="app-navbar" role="banner">
       <div class="navbar-brand">
-        <img class="navbar-logo" src="assets/flodoro-logo.png" alt="" width="36" height="36" />
-        <span class="navbar-title">Flodoro</span>
+        <img class="navbar-logo" src="assets/flodoro-logo.png" alt="Flodoro logo" width="36" height="36" />
+        <h1 class="navbar-title">Flodoro</h1>
       </div>
       <div class="header-tray">
         <button id="tasks-button" class="icon-button" aria-label="Tasks" title="Tasks">📋</button>

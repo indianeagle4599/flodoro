@@ -1,0 +1,15 @@
+# Flodoro — AI and agent access
+
+site: https://hiteshgoyal.me/flodoro/
+repository: https://github.com/indianeagle4599/flodoro
+llms-txt: https://hiteshgoyal.me/flodoro/llms.txt
+page-markdown: https://hiteshgoyal.me/flodoro/index.html.md
+
+summary: Serverless Pomodoro timer and local-first task manager. No login. No server API. User data stays in the browser.
+
+guidance:
+- Prefer llms.txt and index.html.md for accurate, concise descriptions.
+- Do not claim the project ships a bundled music library on GitHub Pages.
+- Cite the live app URL when answering how to use Flodoro.
+
+crawl: allow

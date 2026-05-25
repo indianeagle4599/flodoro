@@ -1,7 +1,7 @@
 import os, shutil
 
-DIR = "C:/Users/hites/Desktop/pomodoro_app/assets/_music"
-NEW_DIR = "C:/Users/hites/Desktop/pomodoro_app/assets/music"
+DIR = "C:/Users/hites/Desktop/flodoro/assets/_music"
+NEW_DIR = "C:/Users/hites/Desktop/flodoro/assets/music"
 playlists = os.listdir(DIR)
 for playlist in playlists:
     cur_playlist_path = os.path.join(DIR, playlist)

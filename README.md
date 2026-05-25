@@ -5,6 +5,10 @@
 
 > Pomodoro, where music flows.
 
+**Live app:** [hiteshgoyal.me/flodoro](https://hiteshgoyal.me/flodoro/)
+
+**Agent docs:** [`llms.txt`](https://hiteshgoyal.me/flodoro/llms.txt)
+
 Flodoro is a serverless, local-first Pomodoro timer and task manager for focused work sessions, breaks, ambient audio, lightweight history, and personal workflow tracking.
 
 It is designed as one clean webpage: no backend, no account system, no sync requirement. User preferences, tasks, history, notification settings, and audio choices stay in the browser. JSON app state uses `localStorage`; local music folder access uses the browser picker and, where supported, an IndexedDB-stored folder handle.
@@ -22,7 +26,7 @@ The default direction is serverless and device-local. Remote sync, accounts, or 
 ## Repository layout
 
 ```text
-pomodoro-app/
+flodoro/
   index.html                 # single-page app shell and slide-out panels
   app.js                     # timer, tasks, settings, history, audio, notifications
   style.css                  # responsive UI, panels, controls, themes
