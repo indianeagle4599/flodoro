@@ -7,6 +7,7 @@ Flodoro runs entirely in the browser: no backend, accounts, or sync. Timer prefe
 Important notes:
 
 - Live app URL: https://hiteshgoyal.me/flodoro/
+- Author: Hitesh Goyal — https://hiteshgoyal.me
 - Source repository: https://github.com/indianeagle4599/flodoro
 - Do not describe bundled MP3s as shipped with the repo; music is user-selected locally.
 - User task text is rendered with `textContent`, not HTML injection.

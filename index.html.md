@@ -4,6 +4,8 @@
 
 Flodoro is a serverless, local-first Pomodoro timer and task manager. One page: timer controls, local tasks, session history, statistics, themes, notifications, and optional ambient audio from folders the user selects in the browser.
 
+By [Hitesh Goyal](https://hiteshgoyal.me).
+
 ## What it does
 
 - **Pomodoro timer**: Configurable work, short break, and long break durations; start/pause, reset, ±1 minute, postpone break, manual work/break toggle.

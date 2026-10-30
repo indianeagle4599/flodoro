@@ -7,7 +7,8 @@
   <title>Flodoro — Pomodoro timer and task manager</title>
   <meta name="description"
     content="Flodoro is a free, serverless Pomodoro timer and local-first task manager with history, themes, notifications, and optional local music playlists." />
-  <meta name="author" content="Flodoro" />
+  <meta name="author" content="Hitesh Goyal" />
+  <link rel="author" href="https://hiteshgoyal.me" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <link rel="canonical" href="https://hiteshgoyal.me/flodoro/" />
   <link rel="sitemap" type="application/xml" title="Sitemap"
@@ -20,25 +21,33 @@
   <meta property="og:description"
     content="Serverless Pomodoro timer with local tasks, session history, themes, notifications, and optional local music." />
   <meta property="og:url" content="https://hiteshgoyal.me/flodoro/" />
-  <meta property="og:image" content="https://hiteshgoyal.me/flodoro/assets/flodoro-logo.png" />
-  <meta property="og:image:alt" content="Flodoro logo" />
+  <meta property="og:image" content="https://hiteshgoyal.me/flodoro/assets/og-image.png" />
+  <meta property="og:image:alt" content="Flodoro logo beside the words Pomodoro timer and task manager" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:locale" content="en_US" />
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Flodoro — Pomodoro timer and task manager" />
   <meta name="twitter:description"
     content="Free, local-first Pomodoro timer and task manager. No account required." />
-  <meta name="twitter:image" content="https://hiteshgoyal.me/flodoro/assets/flodoro-logo.png" />
-  <meta name="twitter:image:alt" content="Flodoro logo" />
+  <meta name="twitter:image" content="https://hiteshgoyal.me/flodoro/assets/og-image.png" />
+  <meta name="twitter:image:alt" content="Flodoro logo beside the words Pomodoro timer and task manager" />
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
+      "@type": ["SoftwareApplication", "WebApplication"],
       "name": "Flodoro",
       "alternateName": "Flodoro Pomodoro",
       "url": "https://hiteshgoyal.me/flodoro/",
-      "image": "https://hiteshgoyal.me/flodoro/assets/flodoro-logo.png",
+      "image": "https://hiteshgoyal.me/flodoro/assets/og-image.png",
       "codeRepository": "https://github.com/indianeagle4599/flodoro",
       "description": "Serverless, local-first Pomodoro timer and task manager with session history, themes, notifications, and optional local music playlists.",
+      "author": {
+        "@type": "Person",
+        "name": "Hitesh Goyal",
+        "url": "https://hiteshgoyal.me"
+      },
       "applicationCategory": "ProductivityApplication",
       "operatingSystem": "Any",
       "browserRequirements": "Requires JavaScript. Works in modern browsers with localStorage.",
@@ -101,7 +110,7 @@
   <div id="app" tabindex="0">
     <header class="app-navbar" role="banner">
       <div class="navbar-brand">
-        <img class="navbar-logo" src="assets/flodoro-logo.png" alt="Flodoro logo" width="36" height="36" />
+        <img class="navbar-logo" src="assets/flodoro-logo.png" alt="Flodoro logo, a clock with a treble clef" width="36" height="36" />
         <h1 class="navbar-title">Flodoro</h1>
       </div>
       <div class="header-tray">
@@ -142,6 +151,7 @@
       <!-- Display flagged (starred) tasks prominently -->
       <div id="flagged-tasks-display" class="flagged-tasks-display hidden"></div>
     </main>
+    <footer class="site-credit">by <a href="https://hiteshgoyal.me">Hitesh Goyal</a></footer>
     <!-- Settings panel: slides out from the top right under the settings button. Hides when not active. -->
     <div id="settings-panel" class="settings-panel slideout hidden" role="dialog" aria-modal="true"
       aria-labelledby="settings-title">

@@ -1,4 +1,12 @@
-# Flodoro — allow search and AI crawlers; see llms.txt for agent context.
+# Flodoro is published at https://hiteshgoyal.me/flodoro/.
+# Crawlers apply robots rules only from the host root:
+# https://hiteshgoyal.me/robots.txt
+# That file allows this path. Its sitemap is https://hiteshgoyal.me/sitemap.xml,
+# which lists the project page https://hiteshgoyal.me/projects/?slug=flodoro
+# and does not list this app URL.
+# This copy repeats the allow policy and points at the app sitemap for clients
+# that request /flodoro/robots.txt directly.
+
 User-agent: *
 Allow: /
 
