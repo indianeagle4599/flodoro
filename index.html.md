@@ -2,6 +2,8 @@
 
 > Pomodoro, where music flows.
 
+- Author: Hitesh Goyal — https://hiteshgoyal.me/
+
 Flodoro is a serverless, local-first Pomodoro timer and task manager. One page: timer controls, local tasks, session history, statistics, themes, notifications, and optional ambient audio from folders the user selects in the browser.
 
 ## What it does

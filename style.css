@@ -105,7 +105,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .navbar-logo {
@@ -122,6 +122,42 @@ body {
   letter-spacing: 0.02em;
   color: #ffffff;
   white-space: nowrap;
+}
+
+.navbar-copy {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.navbar-tagline {
+  margin: 0.1rem 0 0;
+  color: var(--color-secondary);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-credit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.85rem;
+  z-index: 1;
+  margin: 0;
+  text-align: center;
+  color: var(--color-secondary);
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.site-credit a {
+  color: inherit;
+  text-underline-offset: 0.15em;
+}
+
+.site-credit a:hover {
+  color: var(--color-primary);
 }
 
 /* Header buttons container groups tasks, history and settings icons */
@@ -748,6 +784,30 @@ body {
   .notification-output-row,
   .notify-options {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-navbar {
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+  }
+
+  .navbar-brand {
+    flex-shrink: 0;
+  }
+
+  .navbar-tagline {
+    display: none;
+  }
+
+  .header-tray {
+    gap: 0.2rem;
+    padding-inline: 0.35rem;
+  }
+
+  .header-tray .icon-button {
+    padding-inline: 0.3rem;
   }
 }
 /* Hide the current task display since flagged tasks are shown instead */
