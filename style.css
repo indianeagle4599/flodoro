@@ -124,6 +124,29 @@ body {
   white-space: nowrap;
 }
 
+.navbar-copy {
+  min-width: 0;
+}
+
+.navbar-tagline {
+  margin: 0.1rem 0 0;
+  color: var(--color-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.app-footer {
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 1rem;
+  color: var(--color-secondary);
+  font-size: 0.8rem;
+}
+
+.app-footer a {
+  color: inherit;
+}
+
 /* Header buttons container groups tasks, history and settings icons */
 .header-buttons {
   display: flex;

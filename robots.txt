@@ -1,4 +1,3 @@
-# Flodoro — allow search and AI crawlers; see llms.txt for agent context.
 User-agent: *
 Allow: /
 
