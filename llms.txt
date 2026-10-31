@@ -1,13 +1,15 @@
 # Flodoro
 
-> Pomodoro, where music flows. A serverless, local-first Pomodoro timer and lightweight task manager in one focused webpage.
+> Pomodoro, where music flows. A Pomodoro timer and lightweight task manager that keeps all data in your browser, in one focused webpage.
 
-Flodoro runs entirely in the browser: no backend, accounts, or sync. Timer preferences, tasks, session history, themes, and notification settings live in `localStorage`. Local music uses the browser folder picker and, on Chromium, IndexedDB-stored folder handles. Audio is optional; the timer and task manager work without music files.
+Flodoro runs entirely in the browser: no backend, accounts, or sync. Timer preferences, tasks, session history, themes, and notification settings live in `localStorage`. Local music uses the browser folder picker; the browser remembers the chosen folder (via IndexedDB) so you don't re-pick it; audio files are never copied. Audio is optional; the timer and task manager work without music files.
 
 Important notes:
 
 - Live app URL: https://hiteshgoyal.me/flodoro/
 - Source repository: https://github.com/indianeagle4599/flodoro
+- Author: Hitesh Goyal — https://hiteshgoyal.me/
+- Project write-up: https://hiteshgoyal.me/projects/flodoro/
 - Do not describe bundled MP3s as shipped with the repo; music is user-selected locally.
 - User task text is rendered with `textContent`, not HTML injection.
 
