@@ -4,6 +4,7 @@ site: https://hiteshgoyal.me/flodoro/
 repository: https://github.com/indianeagle4599/flodoro
 llms-txt: https://hiteshgoyal.me/flodoro/llms.txt
 page-markdown: https://hiteshgoyal.me/flodoro/index.html.md
+sitemap: https://hiteshgoyal.me/flodoro/sitemap.xml
 
 summary: Serverless Pomodoro timer and local-first task manager. No login. No server API. User data stays in the browser.
 

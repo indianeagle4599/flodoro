@@ -1,3 +1,10 @@
+# Flodoro is published at https://hiteshgoyal.me/flodoro/
+# Crawlers apply robots rules from the host root: https://hiteshgoyal.me/robots.txt
+# That file allows this path. Its sitemap (https://hiteshgoyal.me/sitemap.xml) also
+# lists the live app URL and the project page at /projects/flodoro/.
+# This copy repeats the allow policy for clients that request /flodoro/robots.txt
+# directly and points at agent docs (llms.txt, ai.txt) and the app sitemap below.
+
 User-agent: *
 Allow: /
 
