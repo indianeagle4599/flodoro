@@ -13,7 +13,10 @@
   <link rel="canonical" href="https://hiteshgoyal.me/flodoro/" />
   <link rel="sitemap" type="application/xml" title="Sitemap"
     href="https://hiteshgoyal.me/flodoro/sitemap.xml" />
+  <link rel="alternate" type="text/markdown" href="index.html.md" title="LLM-readable page summary" />
   <link rel="help" type="text/plain" href="llms.txt" title="LLM and agent site index" />
+  <meta name="theme-color" content="#3358a2" />
+  <link rel="preconnect" href="https://gc.zgo.at" crossorigin />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Flodoro" />
   <meta property="og:title" content="Flodoro — Pomodoro timer and task manager" />
@@ -35,12 +38,13 @@
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
+      "@type": ["SoftwareApplication", "WebApplication"],
       "@id": "https://hiteshgoyal.me/flodoro/#app",
       "name": "Flodoro",
       "alternateName": "Flodoro Pomodoro",
       "url": "https://hiteshgoyal.me/flodoro/",
       "image": "https://hiteshgoyal.me/flodoro/assets/og-image.png",
+      "codeRepository": "https://github.com/indianeagle4599/flodoro",
       "sameAs": [
         "https://github.com/indianeagle4599/flodoro",
         "https://hiteshgoyal.me/projects/flodoro/"
@@ -51,7 +55,7 @@
         "name": "Hitesh Goyal",
         "url": "https://hiteshgoyal.me/"
       },
-      "applicationCategory": "UtilitiesApplication",
+      "applicationCategory": "ProductivityApplication",
       "operatingSystem": "Any",
       "browserRequirements": "Requires JavaScript. Works in modern browsers with localStorage.",
       "offers": {
@@ -71,49 +75,27 @@
       "inLanguage": "en"
     }
   </script>
-  <link rel="icon" type="image/png" href="assets/flodoro-logo.png" />
+  <link rel="icon" type="image/png" href="assets/flodoro-logo-navbar.png" />
+  <link rel="apple-touch-icon" href="assets/flodoro-logo-navbar.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
+<body>
+  <noscript>
+    <p class="noscript-notice">Flodoro is a free Pomodoro timer and task manager that runs in your browser. JavaScript is required for the timer; see the <a href="index.html.md">page summary</a> or <a href="https://github.com/indianeagle4599/flodoro">repository</a>.</p>
+  </noscript>
 
 <!-- 🔔 Audio notification chime -->
 <audio id="notification-sound"
   src="assets/audio/notify.mp3"
-  preload="auto"></audio>
+  preload="none"></audio>
 
 <!-- 💬 Toast container -->
 <div id="toast" class="toast hidden" role="alert"></div>
-
-<style>
-  .toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: #fff;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    z-index: 9999;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .toast.show {
-    opacity: 1;
-  }
-</style>
-
-
-<body>
-  <noscript>
-    <p class="noscript-notice">Flodoro needs JavaScript for the timer.
-      See the <a href="https://github.com/indianeagle4599/flodoro">repository</a>.</p>
-  </noscript>
   <div id="app" tabindex="0">
     <header class="app-navbar" role="banner">
       <div class="navbar-brand">
-        <img class="navbar-logo" src="assets/flodoro-logo.png" alt="Flodoro logo, a clock with a treble clef" width="36" height="36" />
+        <img class="navbar-logo" src="assets/flodoro-logo-navbar.png" alt="Flodoro logo, a clock with a treble clef" width="36" height="36" decoding="async" fetchpriority="high" />
         <div class="navbar-copy">
           <h1 class="navbar-title">Flodoro</h1>
           <p class="navbar-tagline">Pomodoro timer and task manager</p>
@@ -345,8 +327,8 @@
     </div>
     <footer class="site-credit">Built by <a href="https://hiteshgoyal.me/">Hitesh Goyal</a> · <a href="https://hiteshgoyal.me/projects/flodoro/">Why I built it and how it works</a></footer>
   </div>
-  <audio id="audio-player" preload="auto"></audio>
-  <script src="app.js"></script>
+  <audio id="audio-player" preload="none"></audio>
+  <script src="app.js" defer></script>
   <script data-goatcounter="https://hitesh-pomodoro.goatcounter.com/count"
     async src="//gc.zgo.at/count.js"></script>
 </body>
