@@ -2414,7 +2414,7 @@
         try {
           new Notification(title, {
             body: body,
-            icon: "assets/flodoro-logo-navbar.png"
+            icon: "assets/flodoro-logo/flodoro-logo-192.png"
           });
         } catch (e) {
           console.warn("Notification failed:", e);

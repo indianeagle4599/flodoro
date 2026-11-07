@@ -17,6 +17,9 @@
   <link rel="help" type="text/plain" href="llms.txt" title="LLM and agent site index" />
   <meta name="theme-color" content="#3358a2" />
   <link rel="preconnect" href="https://gc.zgo.at" crossorigin />
+  <link rel="preload" as="image" type="image/avif" fetchpriority="high"
+    imagesrcset="assets/flodoro-logo/flodoro-logo-36.avif 1x, assets/flodoro-logo/flodoro-logo-72.avif 2x, assets/flodoro-logo/flodoro-logo-108.avif 3x"
+    href="assets/flodoro-logo/flodoro-logo-36.avif" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Flodoro" />
   <meta property="og:title" content="Flodoro — Pomodoro timer and task manager" />
@@ -75,8 +78,8 @@
       "inLanguage": "en"
     }
   </script>
-  <link rel="icon" type="image/png" href="assets/flodoro-logo-navbar.png" />
-  <link rel="apple-touch-icon" href="assets/flodoro-logo-navbar.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/flodoro-logo/flodoro-logo-32.png" />
+  <link rel="apple-touch-icon" href="assets/flodoro-logo/flodoro-logo-180.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -95,7 +98,16 @@
   <div id="app" tabindex="0">
     <header class="app-navbar" role="banner">
       <div class="navbar-brand">
-        <img class="navbar-logo" src="assets/flodoro-logo-navbar.png" alt="Flodoro logo, a clock with a treble clef" width="36" height="36" decoding="async" fetchpriority="high" />
+        <picture>
+          <source type="image/avif"
+            srcset="assets/flodoro-logo/flodoro-logo-36.avif 1x, assets/flodoro-logo/flodoro-logo-72.avif 2x, assets/flodoro-logo/flodoro-logo-108.avif 3x" />
+          <source type="image/webp"
+            srcset="assets/flodoro-logo/flodoro-logo-36.webp 1x, assets/flodoro-logo/flodoro-logo-72.webp 2x, assets/flodoro-logo/flodoro-logo-108.webp 3x" />
+          <img class="navbar-logo" src="assets/flodoro-logo/flodoro-logo-36.png"
+            srcset="assets/flodoro-logo/flodoro-logo-36.png 1x, assets/flodoro-logo/flodoro-logo-72.png 2x, assets/flodoro-logo/flodoro-logo-108.png 3x"
+            alt="Flodoro logo, a clock with a treble clef" width="36" height="36" decoding="async"
+            fetchpriority="high" />
+        </picture>
         <div class="navbar-copy">
           <h1 class="navbar-title">Flodoro</h1>
           <p class="navbar-tagline">Pomodoro timer and task manager</p>
