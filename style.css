@@ -272,6 +272,25 @@ body {
   text-decoration: underline;
 }
 
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
 .session-label {
   /* Hide the redundant session label since mode toggle displays it */
   display: none;
