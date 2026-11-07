@@ -18,8 +18,9 @@
   --color-bg-overlay: rgba(0, 0, 0, 0.35);
   --panel-bg: rgba(17, 24, 39, 0.75);
   --font-size-title: 2.5rem;
-  --font-size-timer: 6rem;
-  --font-size-label: 2.5rem;
+  --font-size-timer: clamp(3.5rem, 10vmin + 1.5rem, 6rem);
+  --font-size-label: clamp(1.35rem, 3vmin + 0.75rem, 2.5rem);
+  --app-footer-space: 2.75rem;
   --border-radius: 12px;
   --input-bg: #374151;
   --input-color: #ffffff;
@@ -55,7 +56,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding-bottom: var(--app-footer-space);
   /* The background image will be updated by JavaScript via inline style */
   background-size: cover;
   background-position: center;
@@ -122,11 +125,11 @@ body {
   letter-spacing: 0.02em;
   color: #ffffff;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .navbar-copy {
   min-width: 0;
-  overflow: hidden;
 }
 
 .navbar-tagline {
@@ -247,13 +250,17 @@ body {
 
 /* Main content area containing timer and controls */
 .main-content {
-  flex: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 1rem;
+  box-sizing: border-box;
 }
 
 .noscript-notice {
@@ -270,6 +277,25 @@ body {
 .noscript-notice a {
   color: inherit;
   text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
 }
 
 .session-label {
@@ -377,6 +403,9 @@ body {
   color: var(--color-primary);
   z-index: 2;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100dvh - var(--panel-top) - 0.75rem);
+  box-sizing: border-box;
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
@@ -787,6 +816,12 @@ body {
   }
 }
 
+@media (max-width: 480px) and (orientation: portrait) {
+  .navbar-tagline {
+    display: none;
+  }
+}
+
 @media (max-width: 420px) {
   .app-navbar {
     gap: 0.5rem;
@@ -794,11 +829,8 @@ body {
   }
 
   .navbar-brand {
-    flex-shrink: 0;
-  }
-
-  .navbar-tagline {
-    display: none;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .header-tray {
@@ -995,6 +1027,37 @@ body {
   gap: 0.75rem;
 }
 
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-panel > .settings-title {
+  flex-shrink: 0;
+}
+
+.settings-panel > .settings-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-panel .settings-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 0.5rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  margin-bottom: -1rem;
+  padding: 0.75rem 1rem 1rem;
+  z-index: 2;
+  background-color: #111827;
+  border-top: 1px solid var(--panel-border);
+  box-shadow: 0 -14px 18px #111827;
+}
+
 .volume-group {
   display: flex;
   align-items: center;
@@ -1064,6 +1127,10 @@ body {
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
   color: var(--color-secondary);
+  white-space: normal;
+  line-height: 1.25;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .settings-group input[type="number"],
@@ -1141,6 +1208,18 @@ body {
 .settings-row .settings-group {
   flex: 1 1 0;
   min-width: 4rem;
+}
+
+/* Two-column settings: long label on its own row (desktop / tablet wide layouts) */
+.settings-row:has(#sessions-before-long) .settings-group:has(#sessions-before-long) {
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settings-row .settings-group label {
+  overflow: visible;
+  overflow-wrap: break-word;
 }
 
 /* Colour input row for gradient pickers */
@@ -1308,4 +1387,186 @@ body {
 
 .star-button:hover {
   color: var(--color-accent-light);
+}
+
+/* --- Viewport tuning (layout only; colors and structure unchanged) --- */
+
+.site-credit a {
+  display: inline-block;
+  padding: 0.25rem 0.2rem;
+}
+
+@media (pointer: coarse) {
+  .header-tray .icon-button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .control-button {
+    min-height: 2.75rem;
+    box-sizing: border-box;
+  }
+
+  .time-adjust-btn {
+    min-height: 2.75rem !important;
+    box-sizing: border-box;
+  }
+
+  .site-credit a {
+    min-height: 2.75rem;
+    line-height: 1.25;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --font-size-timer: clamp(2.5rem, 24vh, 3.75rem);
+    --font-size-label: clamp(1rem, 9vh, 1.45rem);
+    --app-footer-space: 2.15rem;
+  }
+
+  .app-navbar {
+    padding-top: 0.45rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .navbar-tagline {
+    display: none;
+  }
+
+  .main-content {
+    padding: 0.15rem 1rem 0.25rem;
+    justify-content: center;
+  }
+
+  .mode-toggle {
+    margin-bottom: 0.15rem;
+  }
+
+  .mode-sub {
+    font-size: clamp(0.7rem, 3.5vh, 0.95rem);
+    line-height: 1.1;
+  }
+
+  .timer-wrapper {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+    gap: 0.6rem;
+    max-width: min(34rem, 100%);
+  }
+
+  .time-adjust-btn {
+    width: min(5.5rem, 18vw) !important;
+    flex: 0 0 auto;
+  }
+
+  .timer-display {
+    margin-bottom: 0;
+    line-height: 1;
+    flex: 0 1 auto;
+  }
+
+  .controls {
+    gap: 0.65rem;
+    margin-top: 0.15rem;
+  }
+
+  .site-credit {
+    bottom: 0.45rem;
+    font-size: clamp(0.62rem, 2.6vh, 0.75rem);
+    line-height: 1.2;
+  }
+}
+
+@media (min-width: 1920px) {
+  .main-content {
+    padding-inline: clamp(1rem, 2.5vw, 2.5rem);
+  }
+}
+
+/* Portrait phones ≤480px: stack icon tray when a single row would crowd or overlap */
+@media (max-width: 480px) and (orientation: portrait) {
+  :root {
+    --panel-top: 7.5rem;
+  }
+
+  .app-navbar {
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.45rem;
+    padding-inline: 0.65rem;
+  }
+
+  .navbar-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .header-tray {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.15rem;
+    padding-inline: 0.25rem;
+    box-sizing: border-box;
+  }
+
+  .header-tray .icon-button {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 2.85rem;
+    padding-inline: 0;
+  }
+}
+
+/* Phone / small tablet: keep slideout panels inside the viewport */
+@media (max-width: 932px) {
+  .settings-panel,
+  .tasks-panel,
+  .history-panel,
+  .audio-panel,
+  .stats-panel,
+  .notification-panel,
+  .playlist-panel {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    max-width: none;
+  }
+
+  .settings-panel .settings-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .settings-panel .settings-row .settings-group {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .settings-panel > .settings-content {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .settings-panel,
+  .tasks-panel,
+  .history-panel,
+  .audio-panel,
+  .stats-panel,
+  .notification-panel,
+  .playlist-panel {
+    max-height: calc(100dvh - var(--panel-top) - 0.5rem);
+  }
 }
