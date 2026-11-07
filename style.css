@@ -820,16 +820,6 @@ body {
   .navbar-tagline {
     display: none;
   }
-
-  .navbar-brand {
-    flex-shrink: 0;
-  }
-
-  .header-tray {
-    flex: 1 1 auto;
-    min-width: 0;
-    justify-content: flex-end;
-  }
 }
 
 @media (max-width: 420px) {
@@ -1058,8 +1048,14 @@ body {
   position: sticky;
   bottom: 0;
   margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  background: var(--panel-bg);
+  margin-left: -1rem;
+  margin-right: -1rem;
+  margin-bottom: -1rem;
+  padding: 0.75rem 1rem 1rem;
+  z-index: 2;
+  background-color: #111827;
+  border-top: 1px solid var(--panel-border);
+  box-shadow: 0 -14px 18px #111827;
 }
 
 .volume-group {
@@ -1212,6 +1208,18 @@ body {
 .settings-row .settings-group {
   flex: 1 1 0;
   min-width: 4rem;
+}
+
+/* Two-column settings: long label on its own row (desktop / tablet wide layouts) */
+.settings-row:has(#sessions-before-long) .settings-group:has(#sessions-before-long) {
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settings-row .settings-group label {
+  overflow: visible;
+  overflow-wrap: break-word;
 }
 
 /* Colour input row for gradient pickers */
@@ -1483,8 +1491,8 @@ body {
   }
 }
 
-/* Narrow portrait phones: stack icon tray so header does not clip (landscape width >480 unchanged) */
-@media (max-width: 400px) and (orientation: portrait) {
+/* Portrait phones ≤480px: stack icon tray when a single row would crowd or overlap */
+@media (max-width: 480px) and (orientation: portrait) {
   :root {
     --panel-top: 7.5rem;
   }
