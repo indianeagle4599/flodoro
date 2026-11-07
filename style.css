@@ -125,11 +125,11 @@ body {
   letter-spacing: 0.02em;
   color: #ffffff;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .navbar-copy {
   min-width: 0;
-  overflow: hidden;
 }
 
 .navbar-tagline {
@@ -403,6 +403,9 @@ body {
   color: var(--color-primary);
   z-index: 2;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100dvh - var(--panel-top) - 0.75rem);
+  box-sizing: border-box;
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
@@ -813,6 +816,22 @@ body {
   }
 }
 
+@media (max-width: 480px) and (orientation: portrait) {
+  .navbar-tagline {
+    display: none;
+  }
+
+  .navbar-brand {
+    flex-shrink: 0;
+  }
+
+  .header-tray {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+}
+
 @media (max-width: 420px) {
   .app-navbar {
     gap: 0.5rem;
@@ -820,11 +839,8 @@ body {
   }
 
   .navbar-brand {
-    flex-shrink: 0;
-  }
-
-  .navbar-tagline {
-    display: none;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .header-tray {
@@ -1021,6 +1037,31 @@ body {
   gap: 0.75rem;
 }
 
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-panel > .settings-title {
+  flex-shrink: 0;
+}
+
+.settings-panel > .settings-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-panel .settings-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  background: var(--panel-bg);
+}
+
 .volume-group {
   display: flex;
   align-items: center;
@@ -1092,7 +1133,8 @@ body {
   color: var(--color-secondary);
   white-space: normal;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .settings-group input[type="number"],
@@ -1438,5 +1480,85 @@ body {
 @media (min-width: 1920px) {
   .main-content {
     padding-inline: clamp(1rem, 2.5vw, 2.5rem);
+  }
+}
+
+/* Narrow portrait phones: stack icon tray so header does not clip (landscape width >480 unchanged) */
+@media (max-width: 400px) and (orientation: portrait) {
+  :root {
+    --panel-top: 7.5rem;
+  }
+
+  .app-navbar {
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.45rem;
+    padding-inline: 0.65rem;
+  }
+
+  .navbar-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .header-tray {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.15rem;
+    padding-inline: 0.25rem;
+    box-sizing: border-box;
+  }
+
+  .header-tray .icon-button {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 2.85rem;
+    padding-inline: 0;
+  }
+}
+
+/* Phone / small tablet: keep slideout panels inside the viewport */
+@media (max-width: 932px) {
+  .settings-panel,
+  .tasks-panel,
+  .history-panel,
+  .audio-panel,
+  .stats-panel,
+  .notification-panel,
+  .playlist-panel {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    max-width: none;
+  }
+
+  .settings-panel .settings-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .settings-panel .settings-row .settings-group {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .settings-panel > .settings-content {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .settings-panel,
+  .tasks-panel,
+  .history-panel,
+  .audio-panel,
+  .stats-panel,
+  .notification-panel,
+  .playlist-panel {
+    max-height: calc(100dvh - var(--panel-top) - 0.5rem);
   }
 }
