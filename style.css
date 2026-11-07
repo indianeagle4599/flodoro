@@ -18,8 +18,9 @@
   --color-bg-overlay: rgba(0, 0, 0, 0.35);
   --panel-bg: rgba(17, 24, 39, 0.75);
   --font-size-title: 2.5rem;
-  --font-size-timer: 6rem;
-  --font-size-label: 2.5rem;
+  --font-size-timer: clamp(3.5rem, 10vmin + 1.5rem, 6rem);
+  --font-size-label: clamp(1.35rem, 3vmin + 0.75rem, 2.5rem);
+  --app-footer-space: 2.75rem;
   --border-radius: 12px;
   --input-bg: #374151;
   --input-color: #ffffff;
@@ -55,7 +56,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding-bottom: var(--app-footer-space);
   /* The background image will be updated by JavaScript via inline style */
   background-size: cover;
   background-position: center;
@@ -247,13 +250,17 @@ body {
 
 /* Main content area containing timer and controls */
 .main-content {
-  flex: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 1rem;
+  box-sizing: border-box;
 }
 
 .noscript-notice {
@@ -1083,6 +1090,9 @@ body {
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
   color: var(--color-secondary);
+  white-space: normal;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .settings-group input[type="number"],
@@ -1327,4 +1337,106 @@ body {
 
 .star-button:hover {
   color: var(--color-accent-light);
+}
+
+/* --- Viewport tuning (layout only; colors and structure unchanged) --- */
+
+.site-credit a {
+  display: inline-block;
+  padding: 0.25rem 0.2rem;
+}
+
+@media (pointer: coarse) {
+  .header-tray .icon-button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .control-button {
+    min-height: 2.75rem;
+    box-sizing: border-box;
+  }
+
+  .time-adjust-btn {
+    min-height: 2.75rem !important;
+    box-sizing: border-box;
+  }
+
+  .site-credit a {
+    min-height: 2.75rem;
+    line-height: 1.25;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --font-size-timer: clamp(2.5rem, 24vh, 3.75rem);
+    --font-size-label: clamp(1rem, 9vh, 1.45rem);
+    --app-footer-space: 2.15rem;
+  }
+
+  .app-navbar {
+    padding-top: 0.45rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .navbar-tagline {
+    display: none;
+  }
+
+  .main-content {
+    padding: 0.15rem 1rem 0.25rem;
+    justify-content: center;
+  }
+
+  .mode-toggle {
+    margin-bottom: 0.15rem;
+  }
+
+  .mode-sub {
+    font-size: clamp(0.7rem, 3.5vh, 0.95rem);
+    line-height: 1.1;
+  }
+
+  .timer-wrapper {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+    gap: 0.6rem;
+    max-width: min(34rem, 100%);
+  }
+
+  .time-adjust-btn {
+    width: min(5.5rem, 18vw) !important;
+    flex: 0 0 auto;
+  }
+
+  .timer-display {
+    margin-bottom: 0;
+    line-height: 1;
+    flex: 0 1 auto;
+  }
+
+  .controls {
+    gap: 0.65rem;
+    margin-top: 0.15rem;
+  }
+
+  .site-credit {
+    bottom: 0.45rem;
+    font-size: clamp(0.62rem, 2.6vh, 0.75rem);
+    line-height: 1.2;
+  }
+}
+
+@media (min-width: 1920px) {
+  .main-content {
+    padding-inline: clamp(1rem, 2.5vw, 2.5rem);
+  }
 }
