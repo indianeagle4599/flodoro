@@ -13,6 +13,7 @@
   --font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --color-primary: #fff;
   --color-secondary: #d1d5db;
+  --about-bg: #2c2048;
   --color-accent: #3b82f6;
   --color-danger: #ef4444;
   --color-bg-overlay: rgba(0, 0, 0, 0.35);
@@ -43,16 +44,30 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   font-family: var(--font-family);
   color: var(--color-primary);
+}
+
+/* The timer fills the first screen. The document can scroll to the about
+   copy underneath without a layout-shifting scrollbar. */
+html {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 #app {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -160,6 +175,36 @@ body {
 }
 
 .site-credit a:hover {
+  color: var(--color-primary);
+}
+
+/* Same type size and colour as .site-credit. Sits after the full-screen app. */
+.app-about {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 1.15rem 1.25rem 1.6rem;
+  text-align: center;
+  color: var(--color-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  background: var(--about-bg);
+}
+
+.app-about p {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.app-about p + p {
+  margin-top: 0.55rem;
+}
+
+.app-about a {
+  color: inherit;
+  text-underline-offset: 0.15em;
+}
+
+.app-about a:hover {
   color: var(--color-primary);
 }
 

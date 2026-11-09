@@ -1744,6 +1744,7 @@
       root.style.setProperty('--input-color', '#ffffff');
       root.style.setProperty('--input-border', 'transparent');
       root.style.setProperty('--quote-bg', 'rgba(0, 0, 0, 0.4)');
+      root.style.setProperty('--about-bg', '#2c2048');
     } else {
       // Light mode: dark text on a lightly frosted canvas; muted secondary for
       // labels; frosted (not dark) chips so quote/task text stays readable.
@@ -1760,6 +1761,7 @@
       root.style.setProperty('--input-color', '#111827');
       root.style.setProperty('--input-border', 'rgba(15, 23, 42, 0.16)');
       root.style.setProperty('--quote-bg', 'rgba(255, 255, 255, 0.72)');
+      root.style.setProperty('--about-bg', '#f3f0f8');
     }
     applyBackgroundGradient();
   }
