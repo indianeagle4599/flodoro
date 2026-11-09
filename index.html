@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Flodoro — Pomodoro timer and task manager</title>
   <meta name="description"
-    content="A free Pomodoro timer and task list that runs in your browser. No account; tasks and history stay on your device. Optional music from your own folders." />
+    content="Flodoro is a free Pomodoro timer and task list in your browser. No account; tasks and history stay on your device." />
   <meta name="author" content="Hitesh Goyal" />
   <link rel="author" href="https://hiteshgoyal.me/" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -44,7 +44,15 @@
       "@type": ["SoftwareApplication", "WebApplication"],
       "@id": "https://hiteshgoyal.me/flodoro/#app",
       "name": "Flodoro",
-      "alternateName": "Flodoro Pomodoro",
+      "alternateName": [
+        "Flodoro Pomodoro",
+        "Flodoro Timer",
+        "Flomodoro",
+        "Flowmodoro",
+        "Floro",
+        "Florodo",
+        "Flodoro Pomodoro Timer"
+      ],
       "url": "https://hiteshgoyal.me/flodoro/",
       "image": "https://hiteshgoyal.me/flodoro/assets/og-image.png",
       "codeRepository": "https://github.com/indianeagle4599/flodoro",
@@ -52,8 +60,13 @@
         "https://github.com/indianeagle4599/flodoro",
         "https://hiteshgoyal.me/projects/flodoro/"
       ],
-      "description": "A free Pomodoro timer and task list that runs in your browser. No account; tasks and history stay on your device. Optional music from your own folders.",
+      "description": "Flodoro is a free Pomodoro timer and task list in your browser. No account; tasks and history stay on your device.",
       "author": {
+        "@type": "Person",
+        "name": "Hitesh Goyal",
+        "url": "https://hiteshgoyal.me/"
+      },
+      "creator": {
         "@type": "Person",
         "name": "Hitesh Goyal",
         "url": "https://hiteshgoyal.me/"
@@ -339,6 +352,10 @@
     </div>
     <footer class="site-credit">Built by <a href="https://hiteshgoyal.me/">Hitesh Goyal</a> · <a href="https://hiteshgoyal.me/projects/flodoro/">Why I built it and how it works</a></footer>
   </div>
+  <section class="app-about" aria-label="About Flodoro">
+    <p>Flodoro is a free browser Pomodoro and flow (Flowmodoro-style) focus timer with local tasks and music, and no sign-up.</p>
+    <p>Also searched as Flomodoro, Flowmodoro, Floro or Florodo. A free Pomodoro timer by <a href="https://hiteshgoyal.me/">Hitesh Goyal</a>.</p>
+  </section>
   <audio id="audio-player" preload="none"></audio>
   <script src="app.js" defer></script>
   <script data-goatcounter="https://hitesh-pomodoro.goatcounter.com/count"
